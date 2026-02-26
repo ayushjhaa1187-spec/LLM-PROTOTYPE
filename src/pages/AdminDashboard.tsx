@@ -34,7 +34,7 @@ export default function AdminDashboard() {
           const Icon = stat.icon;
           return (
             <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-              <div className={\`w-12 h-12 rounded-lg flex items-center justify-center \${stat.bg} \${stat.color}\`}>
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.bg} ${stat.color}`}>
                 <Icon className="w-6 h-6" />
               </div>
               <div>
@@ -77,9 +77,9 @@ export default function AdminDashboard() {
             {auditLogs.map((log) => (
               <div key={log.id} className="flex gap-3">
                 <div className="mt-1">
-                  <div className={\`w-2 h-2 rounded-full \${
+                  <div className={`w-2 h-2 rounded-full ${
                     log.action.includes('Failed') ? 'bg-rose-500' : 'bg-slate-400'
-                  }\`}></div>
+                  }`}></div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900">{log.action}</p>

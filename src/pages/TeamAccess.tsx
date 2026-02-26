@@ -41,19 +41,19 @@ export default function TeamAccess() {
                     <div className="text-xs text-slate-500">{user.email}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={\`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider \${
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                       user.role === 'Admin' ? 'bg-indigo-100 text-indigo-800' :
                       user.role === 'Editor' ? 'bg-blue-100 text-blue-800' :
                       'bg-slate-100 text-slate-800'
-                    }\`}>
+                    }`}>
                       {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={\`flex items-center gap-1.5 text-xs font-medium \${
+                    <span className={`flex items-center gap-1.5 text-xs font-medium ${
                       user.status === 'Active' ? 'text-emerald-600' : 'text-amber-600'
-                    }\`}>
-                      <div className={\`w-1.5 h-1.5 rounded-full \${user.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}\`}></div>
+                    }`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
                       {user.status}
                     </span>
                   </td>

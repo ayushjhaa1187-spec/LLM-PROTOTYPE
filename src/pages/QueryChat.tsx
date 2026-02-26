@@ -46,8 +46,8 @@ export default function QueryChat() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
         {messages.map((msg, i) => (
-          <div key={i} className={\`flex \${msg.role === 'user' ? 'justify-end' : 'justify-start'}\`}>
-            <div className={\`max-w-[80%] rounded-2xl p-5 shadow-sm \${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}\`}>
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-2xl p-5 shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
               <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</p>
               
               {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (

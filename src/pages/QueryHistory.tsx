@@ -79,15 +79,15 @@ export default function QueryHistory() {
                       <td className="px-6 py-4 font-medium text-slate-900 capitalize">{item.workflow}</td>
                       <td className="px-6 py-4">
                         <div className="max-w-xs truncate text-xs font-mono text-slate-500">
-                          {Object.entries(params).map(([k, v]) => \`\${k}: \${v}\`).join(', ')}
+                          {Object.entries(params).map(([k, v]) => `${k}: ${v}`).join(', ')}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={\`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider \${
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                           item.risk_level === 'low' ? 'bg-emerald-100 text-emerald-800' : 
                           item.risk_level === 'medium' ? 'bg-amber-100 text-amber-800' : 
                           'bg-rose-100 text-rose-800'
-                        }\`}>
+                        }`}>
                           {item.risk_level}
                         </span>
                       </td>

@@ -69,12 +69,12 @@ export default function VectorManager() {
               <tr key={i} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className={\`w-2 h-2 rounded-full \${idx.status === 'active' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}\`}></div>
+                    <div className={`w-2 h-2 rounded-full ${idx.status === 'active' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
                     <span className="font-medium text-slate-900">{idx.name}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={\`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider \${idx.db === 'Pinecone' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'}\`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${idx.db === 'Pinecone' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'}`}>
                     {idx.db}
                   </span>
                 </td>
@@ -84,7 +84,7 @@ export default function VectorManager() {
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-3">
                     <button className="text-slate-400 hover:text-blue-600 transition-colors" title="Reindex">
-                      <RefreshCw className={\`w-4 h-4 \${idx.status === 'indexing' ? 'animate-spin text-blue-500' : ''}\`} />
+                      <RefreshCw className={`w-4 h-4 ${idx.status === 'indexing' ? 'animate-spin text-blue-500' : ''}`} />
                     </button>
                     <button className="text-slate-400 hover:text-slate-800 transition-colors" title="Settings">
                       <Settings className="w-4 h-4" />

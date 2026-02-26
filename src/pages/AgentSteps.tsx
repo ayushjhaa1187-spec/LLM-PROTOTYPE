@@ -23,20 +23,20 @@ export default function AgentSteps() {
             return (
               <div key={step.id} className="relative flex gap-6">
                 {!isLast && (
-                  <div className={\`absolute left-6 top-10 bottom-[-2rem] w-0.5 \${step.status === 'completed' ? 'bg-emerald-500' : 'bg-slate-200'}\`}></div>
+                  <div className={`absolute left-6 top-10 bottom-[-2rem] w-0.5 ${step.status === 'completed' ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
                 )}
                 <div className="relative z-10 flex-shrink-0">
-                  <div className={\`w-12 h-12 rounded-full flex items-center justify-center border-2 \${
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
                     step.status === 'completed' ? 'bg-emerald-100 border-emerald-500 text-emerald-600' :
                     step.status === 'processing' ? 'bg-blue-100 border-blue-500 text-blue-600 animate-pulse' :
                     'bg-slate-50 border-slate-300 text-slate-400'
-                  }\`}>
+                  }`}>
                     <Icon className="w-5 h-5" />
                   </div>
                 </div>
                 <div className="flex-1 pt-2">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className={\`text-lg font-bold \${step.status === 'queued' ? 'text-slate-400' : 'text-slate-900'}\`}>{step.name}</h3>
+                    <h3 className={`text-lg font-bold ${step.status === 'queued' ? 'text-slate-400' : 'text-slate-900'}`}>{step.name}</h3>
                     <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {step.time}
                     </span>

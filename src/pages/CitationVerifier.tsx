@@ -41,7 +41,7 @@ export default function CitationVerifier() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {claims.map((claim) => (
-              <tr key={claim.id} className={\`hover:bg-slate-50 transition-colors \${claim.status === 'hallucination' ? 'bg-rose-50/30' : ''}\`}>
+              <tr key={claim.id} className={`hover:bg-slate-50 transition-colors ${claim.status === 'hallucination' ? 'bg-rose-50/30' : ''}`}>
                 <td className="px-6 py-4 text-slate-800 leading-relaxed">{claim.text}</td>
                 <td className="px-6 py-4">
                   <div className="text-xs font-bold text-blue-600 mb-1">{claim.source}</div>
@@ -50,7 +50,7 @@ export default function CitationVerifier() {
                   </p>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={\`font-mono text-xs font-bold \${claim.matchScore > 0.8 ? 'text-emerald-600' : 'text-rose-600'}\`}>
+                  <span className={`font-mono text-xs font-bold ${claim.matchScore > 0.8 ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {(claim.matchScore * 100).toFixed(0)}%
                   </span>
                 </td>

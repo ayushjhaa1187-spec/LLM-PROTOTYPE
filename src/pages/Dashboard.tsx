@@ -87,10 +87,10 @@ export default function Dashboard() {
             {recentActivity.map((activity) => (
               <div key={activity.id} className="flex gap-3">
                 <div className="mt-1">
-                  <div className={\`w-2 h-2 rounded-full \${
+                  <div className={`w-2 h-2 rounded-full ${
                     activity.status === 'success' ? 'bg-emerald-500' :
                     activity.status === 'error' ? 'bg-rose-500' : 'bg-blue-500'
-                  }\`}></div>
+                  }`}></div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900">{activity.action}</p>
