@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { UploadCloud, FileText, X, Play, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
