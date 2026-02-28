@@ -1,4 +1,5 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   UploadCloud,
@@ -11,10 +12,25 @@ import {
   Users,
   Settings,
   ShieldAlert,
+  LogOut,
 } from "lucide-react";
+import { isAuthenticated, getUser, clearAuth } from "../lib/api";
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = getUser();
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate("/");
+  };
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -29,6 +45,10 @@ export default function DashboardLayout() {
     { name: "Admin", path: "/admin", icon: ShieldAlert },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
+
+  const initials = user?.full_name
+    ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "??";
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans">
@@ -52,11 +72,10 @@ export default function DashboardLayout() {
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      isActive
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
                         ? "bg-blue-600 text-white"
                         : "hover:bg-slate-800 hover:text-white"
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-medium">{item.name}</span>
@@ -70,12 +89,15 @@ export default function DashboardLayout() {
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold text-sm">
-              JD
+              {initials}
             </div>
-            <div>
-              <p className="text-sm font-medium text-white">Jane Doe</p>
-              <p className="text-xs text-slate-500">Admin</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user?.full_name || "User"}</p>
+              <p className="text-xs text-slate-500 capitalize">{user?.role || "—"}</p>
             </div>
+            <button onClick={handleLogout} className="text-slate-500 hover:text-white transition-colors" title="Sign Out">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -88,18 +110,7 @@ export default function DashboardLayout() {
               "Workspace"}
           </div>
           <div className="flex items-center gap-4">
-            <Link
-              to="/workspaces"
-              className="text-sm text-slate-500 hover:text-slate-800"
-            >
-              Switch Workspace
-            </Link>
-            <Link
-              to="/"
-              className="text-sm text-slate-500 hover:text-slate-800"
-            >
-              Sign Out
-            </Link>
+            <span className="text-xs text-slate-400">{user?.email}</span>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-6">

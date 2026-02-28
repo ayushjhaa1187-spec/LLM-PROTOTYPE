@@ -1,93 +1,147 @@
-import { Link } from "react-router-dom";
-import { FileText, CheckCircle, AlertCircle, Clock, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, CheckCircle, Loader2, AlertCircle, RefreshCw, Trash2 } from "lucide-react";
+import { apiFetch } from "../lib/api";
+
+type DocStatus = {
+  id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  status: string;
+  chunk_count: number;
+  error_message: string | null;
+  created_at: string;
+};
 
 export default function DocumentStatus() {
-  const documents = [
-    { id: "1", name: "FAR_Part_19_Small_Business.pdf", size: "2.4 MB", status: "completed", progress: 100, step: "Indexed" },
-    { id: "2", name: "DoD_Cloud_SRG_v1.docx", size: "1.1 MB", status: "processing", progress: 65, step: "Extracting Entities" },
-    { id: "3", name: "NIST_SP_800_171.pdf", size: "5.8 MB", status: "queued", progress: 0, step: "Waiting" },
-    { id: "4", name: "Legacy_Contract_Scrape.txt", size: "0.5 MB", status: "failed", progress: 45, step: "Noise Filtering Failed" },
-  ];
+  const [docs, setDocs] = useState<DocStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDocs = async () => {
+    try {
+      const res = await apiFetch("/api/v1/documents/status");
+      if (res.ok) {
+        const data = await res.json();
+        setDocs(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch document status", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this document?")) return;
+    try {
+      const res = await apiFetch(`/api/v1/documents/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDocs(docs => docs.filter(d => d.id !== id));
+      } else {
+        alert("Failed to delete document");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting document");
+    }
+  };
+
+  useEffect(() => {
+    fetchDocs();
+    // Poll every 3 seconds for status updates
+    const interval = setInterval(fetchDocs, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case "completed": return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+      case "processing": return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
+      case "failed": return <AlertCircle className="w-5 h-5 text-rose-500" />;
+      default: return <FileText className="w-5 h-5 text-slate-400" />;
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      uploaded: "bg-slate-100 text-slate-800",
+      processing: "bg-blue-100 text-blue-800",
+      completed: "bg-emerald-100 text-emerald-800",
+      failed: "bg-rose-100 text-rose-800",
+    };
+    return colors[status] || "bg-slate-100 text-slate-800";
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Processing Status</h1>
-          <p className="text-sm text-slate-500">Live status of document ingestion pipelines.</p>
+          <p className="text-sm text-slate-500">Track document ingestion progress. Auto-refreshes every 3s.</p>
         </div>
-        <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-slate-50 flex items-center gap-2 transition-colors">
+        <button onClick={fetchDocs} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-slate-50 flex items-center gap-2 transition-colors">
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-            <tr>
-              <th className="px-6 py-4 font-medium">Document</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium">Progress</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {documents.map((doc) => (
-              <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <FileText className={`w-5 h-5 ${doc.status === 'failed' ? 'text-rose-500' : 'text-blue-500'}`} />
-                    <div>
-                      <Link to={`/documents/${doc.id}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
-                        {doc.name}
-                      </Link>
-                      <p className="text-xs text-slate-500">{doc.size}</p>
+        {loading ? (
+          <div className="p-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
+            <p className="text-slate-500">Loading document status...</p>
+          </div>
+        ) : docs.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">
+            No documents uploaded yet. Go to Upload Documents to get started.
+          </div>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 text-slate-500 bg-slate-50">
+              <tr>
+                <th className="px-6 py-4 font-medium">Document</th>
+                <th className="px-6 py-4 font-medium">Type</th>
+                <th className="px-6 py-4 font-medium">Size</th>
+                <th className="px-6 py-4 font-medium">Chunks</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium">Uploaded</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {docs.map((doc) => (
+                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      {statusIcon(doc.status)}
+                      <span className="font-medium text-slate-900">{doc.filename}</span>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    {doc.status === "completed" && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                    {doc.status === "processing" && <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />}
-                    {doc.status === "queued" && <Clock className="w-4 h-4 text-slate-400" />}
-                    {doc.status === "failed" && <AlertCircle className="w-4 h-4 text-rose-500" />}
-                    <span className={`font-medium capitalize ${
-                      doc.status === 'completed' ? 'text-emerald-700' :
-                      doc.status === 'processing' ? 'text-blue-700' :
-                      doc.status === 'failed' ? 'text-rose-700' : 'text-slate-600'
-                    }`}>
+                  </td>
+                  <td className="px-6 py-4 uppercase text-xs font-bold text-slate-500">{doc.file_type}</td>
+                  <td className="px-6 py-4 text-slate-600">{(doc.file_size / 1024).toFixed(0)} KB</td>
+                  <td className="px-6 py-4 text-slate-600">{doc.chunk_count || "—"}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusBadge(doc.status)}`}>
                       {doc.status}
                     </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          doc.status === 'completed' ? 'bg-emerald-500' :
-                          doc.status === 'failed' ? 'bg-rose-500' : 'bg-blue-500'
-                        }`} 
-                        style={{ width: `${doc.progress}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs font-medium text-slate-600 min-w-[3ch]">{doc.progress}%</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">{doc.step}</p>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {doc.status === "failed" ? (
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Retry</button>
-                  ) : doc.status === "completed" ? (
-                    <Link to={`/documents/${doc.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">View</Link>
-                  ) : (
-                    <button className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">Logs</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    {doc.error_message && (
+                      <p className="text-xs text-rose-500 mt-1">{doc.error_message}</p>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 text-xs">{new Date(doc.created_at).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="text-rose-500 hover:text-rose-700 p-1"
+                      title="Delete Document"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
