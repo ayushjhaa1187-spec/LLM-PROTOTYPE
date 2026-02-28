@@ -27,6 +27,13 @@ export default function QueryChat() {
   const [loading, setLoading] = useState(false);
   const [docs, setDocs] = useState<any[]>([]);
   const [selectedDocId, setSelectedDocId] = useState("");
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
     // Load available documents for scoping
@@ -107,7 +114,7 @@ export default function QueryChat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scroll-smooth">
         {messages.map((msg, i) => (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}

@@ -8,6 +8,7 @@ type Claim = {
   ref: number;
   match_score: number;
   source_snippet: string;
+  reasoning: string;
   status: "verified" | "hallucination";
 };
 
@@ -34,51 +35,20 @@ export default function CitationVerifier() {
 
       // Extract verification data from agent_logs
       const verifyStep = (latest.agent_logs || []).find((s: any) => s.step === "verify");
-      if (!verifyStep) { setLoading(false); return; }
+      if (!verifyStep || !verifyStep.output) { setLoading(false); return; }
 
-      // Re-fetch full query details to get full verification data
-      const detailRes = await apiFetch(`/api/v1/query/${latest.id}`);
-      if (!detailRes.ok) { setLoading(false); return; }
-      const detail = await detailRes.json();
+      // Use precision structured data instead of regex parsing
+      const allClaims: Claim[] = (verifyStep.output.claims || []).map((c: any) => ({
+        claim: c.claim,
+        original: c.original,
+        ref: c.ref,
+        match_score: c.match_score,
+        reasoning: c.reasoning,
+        source_snippet: c.source_snippet,
+        status: c.status,
+      }));
 
-      const allClaims: Claim[] = [];
-      const logs = detail.agent_logs || [];
-      const vStep = logs.find((s: any) => s.step === "verify");
-
-      if (vStep && vStep.output) {
-        // Build claims from the verify step output info
-        const verified = vStep.output.verified_count || 0;
-        const hallucinations = vStep.output.hallucination_count || 0;
-        setIssueCount(hallucinations);
-
-        // Parse log messages to reconstruct claims
-        for (const log of vStep.logs || []) {
-          if (log.startsWith("✓ Claim verified")) {
-            const scoreMatch = log.match(/score: (\d+)%/);
-            const refMatch = log.match(/\[(\d+)\]/);
-            allClaims.push({
-              claim: log.replace(/^✓ Claim verified against \[\d+\] \(score: \d+%\)/, "").trim() || "Verified claim",
-              original: log,
-              ref: refMatch ? parseInt(refMatch[1]) : 0,
-              match_score: scoreMatch ? parseInt(scoreMatch[1]) / 100 : 0.9,
-              source_snippet: "Source text matched successfully",
-              status: "verified",
-            });
-          } else if (log.startsWith("✗ HALLUCINATION")) {
-            const scoreMatch = log.match(/score: (\d+)%/);
-            const textMatch = log.match(/"([^"]+)"/);
-            allClaims.push({
-              claim: textMatch ? textMatch[1] : "Unverified claim",
-              original: log,
-              ref: 0,
-              match_score: scoreMatch ? parseInt(scoreMatch[1]) / 100 : 0,
-              source_snippet: "No matching text found in retrieved context.",
-              status: "hallucination",
-            });
-          }
-        }
-      }
-
+      setIssueCount(verifyStep.output.hallucination_count || 0);
       setClaims(allClaims);
     } catch (e) {
       console.error("Failed to fetch verification data", e);
@@ -127,6 +97,7 @@ export default function CitationVerifier() {
               <tr>
                 <th className="px-6 py-4 font-medium w-1/3">Claim</th>
                 <th className="px-6 py-4 font-medium">Source Ref</th>
+                <th className="px-6 py-4 font-medium">Verification Reasoning</th>
                 <th className="px-6 py-4 font-medium">Score</th>
                 <th className="px-6 py-4 font-medium">Status</th>
               </tr>
@@ -137,6 +108,9 @@ export default function CitationVerifier() {
                   <td className="px-6 py-4 text-slate-800 leading-relaxed">{claim.claim}</td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-bold text-blue-600">[{claim.ref}]</span>
+                  </td>
+                  <td className="px-6 py-4 italic text-slate-500 text-xs">
+                    {claim.reasoning}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`font-mono text-xs font-bold ${claim.match_score > 0.6 ? 'text-emerald-600' : 'text-rose-600'}`}>

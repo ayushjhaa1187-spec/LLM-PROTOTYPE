@@ -9,6 +9,8 @@ from app.services import vector_store
 
 def _get_query_embedding(query: str) -> list[float]:
     """Generate embedding for a query string."""
+    # Embedding still uses OpenAI as it's the standard for our vector store chunks
+    # Alternatively, could add more embedding providers if needed.
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     response = client.embeddings.create(
         model="text-embedding-3-small",
@@ -47,16 +49,28 @@ def generate_response(query: str, context_chunks: list[dict]) -> dict:
 
     context_str = "\n\n---\n\n".join(context_parts)
 
-    system_prompt = """You are a US federal procurement compliance expert assistant.
+    system_prompt = """You are an elite US Federal Procurement & Compliance Expert. Your goal is to provide authoritative, highly accurate, and professional guidance based EXCLUSIVELY on the provided source documents.
 
-RULES:
-1. Answer ONLY based on the provided source documents below.
-2. For EVERY claim or fact, include an inline citation like [1], [2], etc. that references the source document number.
-3. If the sources don't contain enough information, say so explicitly — do NOT make up information.
-4. Be specific: cite section numbers (e.g., "FAR 19.502-2") when they appear in the sources.
-5. End your response with a "Sources Used" section listing which document references you cited.
+RULES FOR SUCCESS:
+1. **Source-Only Content**: Every statement must be derived from the provided context. If the context is insufficient, explicitly state: "The provided documents do not contain information regarding [Topic]."
+2. **Dense Inline Citations**: Every fact, number, date, or specific requirement MUST be followed by an inline citation like [1], [2]. If multiple sources support a claim, use [1][2].
+3. **Professional Tone**: Use clear, formal, and objective language. Structure your answer logically with headings if appropriate.
+4. **Specific References**: Always include section numbers, clause IDs (e.g., "FAR 52.212-4"), and dates exactly as they appear in the sources.
+5. **Transparency**: If a source is ambiguous or contradictory, highlight this to the user rather than choosing one interpretation.
+6. **"Sources Used" Section**: Conclude with a clear list of all cited documents, including their source filename and page number.
 
-IMPORTANT: Never invent or hallucinate information. If uncertain, state your uncertainty."""
+ANTI-HALLUCINATION PROTOCOL:
+- Never assume knowledge outside the provided context.
+- Never "guess" a section number or page.
+- If you find a partial match, explain the limitation.
+
+EXAMPLE FORMAT:
+Based on the Federal Acquisition Regulation [1], the micro-purchase threshold is currently set at $10,000 for most supplies [1][2]. However, under specific emergency conditions, this limit may be increased as outlined in Section 13.201 [3].
+
+Sources Used:
+[1] FAR_Part_13.pdf (Page 4)
+[2] Procurement_Memo_2023.docx (Page 1)
+[3] Emergency_Provisions.pdf (Page 12)"""
 
     user_prompt = f"""Source Documents:
 {context_str}
@@ -67,9 +81,12 @@ Question: {query}
 
 Provide a detailed, accurate answer with inline citations [1], [2], etc. referencing the source documents above."""
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    from app.utils.llm_client import get_llm_client, get_model_name
+    client = get_llm_client()
+    model = get_model_name()
+    
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

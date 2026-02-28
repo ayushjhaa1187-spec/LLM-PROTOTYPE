@@ -149,6 +149,107 @@ def deactivate_user(
     return {"detail": "User deactivated"}
 
 
+@router.post("/seed-datasets")
+def trigger_seed_datasets(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Trigger background seeding of external procurement and GDP datasets."""
+    import threading
+    from scripts.seed_datasets import seed_datasets
+    
+    # Run in background to avoid timeout
+    thread = threading.Thread(target=seed_datasets)
+    thread.start()
+    
+    return {"detail": "Dataset seeding triggered in background"}
+
+
+class SECIngestRequest(BaseModel):
+    ticker: str
+
+@router.post("/ingest/sec")
+def ingest_sec_data(
+    body: SECIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Download and process latest 10-K for a ticker."""
+    import threading
+    from app.services.ingestors import ingest_sec_10k
+    
+    thread = threading.Thread(target=ingest_sec_10k, args=(body.ticker, db, current_user.id))
+    thread.start()
+    return {"detail": f"SEC ingestion for {body.ticker} started"}
+
+
+class HFIngestRequest(BaseModel):
+    dataset_name: str
+    limit: int = 50
+
+@router.post("/ingest/hf")
+def ingest_hf_data(
+    body: HFIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Pull data from Hugging Face into the knowledge base."""
+    import threading
+    from app.services.ingestors import ingest_hf_dataset
+    
+    thread = threading.Thread(target=ingest_hf_dataset, args=(body.dataset_name, None, "train", body.limit, db, current_user.id))
+    thread.start()
+    return {"detail": f"Hugging Face ingestion for {body.dataset_name} started"}
+
+
+@router.get("/llm-config")
+def get_llm_config(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Return current LLM provider and available providers (with key presence)."""
+    return {
+        "current_provider": settings.LLM_PROVIDER,
+        "providers": {
+            "openai": {"has_key": bool(settings.OPENAI_API_KEY)},
+            "groq": {"has_key": bool(settings.GROQ_API_KEY)},
+            "together": {"has_key": bool(settings.TOGETHER_API_KEY)},
+            "gemini": {"has_key": bool(settings.GEMINI_API_KEY)},
+            "mistral": {"has_key": bool(settings.MISTRAL_API_KEY)},
+            "openrouter": {"has_key": bool(settings.OPENROUTER_API_KEY)},
+        }
+    }
+
+
+class UpdateLLMProviderRequest(BaseModel):
+    provider: str
+
+
+@router.put("/llm-config")
+def update_llm_provider(
+    body: UpdateLLMProviderRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Update the active LLM provider (runtime only, doesn't persist to .env)."""
+    valid = ["openai", "groq", "together", "gemini", "mistral", "openrouter"]
+    if body.provider not in valid:
+         raise HTTPException(status_code=400, detail=f"Invalid provider. Must be one of {valid}")
+    
+    settings.LLM_PROVIDER = body.provider
+    return {"detail": f"LLM provider updated to {body.provider}", "current": settings.LLM_PROVIDER}
+
+
+@router.get("/discovery")
+def get_dataset_discovery(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Return catalog of premium training/RAG datasets for discovery."""
+    from app.services import discovery
+    return {
+        "datasets": discovery.get_recommended_datasets(),
+        "platforms": discovery.get_platform_links()
+    }
+
+
 @router.get("/audit-logs")
 def get_audit_logs(
     skip: int = 0,

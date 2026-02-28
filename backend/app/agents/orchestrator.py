@@ -67,7 +67,7 @@ def run_pipeline(query: str, document_ids: list[str] = None) -> dict:
 
     # Penalize if hallucinations were found
     if verify_result["hallucinations"]:
-        penalty = len(verify_result["hallucinations"]) * 0.05
+        penalty = len(verify_result["hallucinations"]) * 0.10  # Increased penalty
         final_confidence = max(0.0, final_confidence - penalty)
 
     final_confidence = round(final_confidence, 3)
@@ -86,8 +86,8 @@ def run_pipeline(query: str, document_ids: list[str] = None) -> dict:
         "logs": [
             f"Retrieval confidence: {retrieval_confidence}",
             f"Verification rate: {round(verification_rate, 3)}",
-            f"Hallucinations: {len(verify_result['hallucinations'])}",
-            f"Final confidence: {final_confidence}",
+            f"Hallucinations detected: {len(verify_result['hallucinations'])}",
+            f"Final blended confidence: {final_confidence}",
         ],
     })
 
@@ -101,8 +101,9 @@ def run_pipeline(query: str, document_ids: list[str] = None) -> dict:
         "processing_time_ms": total_ms,
         "agent_logs": agent_logs,
         "verification": {
-            "verified": verify_result["verified"],
-            "hallucinations": verify_result["hallucinations"],
+            "claims": verify_result["results"],
+            "verified_count": len(verify_result["verified_claims"]),
+            "hallucination_count": len(verify_result["hallucinations"]),
             "verification_rate": round(verification_rate, 3),
         },
     }

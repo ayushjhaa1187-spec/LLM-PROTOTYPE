@@ -1,8 +1,8 @@
-"""Verification agent: checks every citation claim against source documents."""
-
 import re
 import time
 from thefuzz import fuzz
+from openai import OpenAI
+from app.config import settings
 
 
 def _normalize(text: str) -> str:
@@ -34,65 +34,115 @@ def _extract_claims(answer: str) -> list[dict]:
     return claims
 
 
+def _llm_verify_claim(claim_text: str, context_text: str) -> dict:
+    """Use an LLM to semantically verify if a claim is supported by the context.
+    
+    Returns: { "verified": bool, "score": float, "reasoning": str }
+    """
+    from app.utils.llm_client import get_llm_client, get_model_name
+    client = get_llm_client()
+    model = get_model_name()
+    
+    prompt = f"""You are a Fact-Checking Agent (Red Team).
+Your task is to verify if the 'Claim' below is supported by the 'Source Context'.
+
+Claim: "{claim_text}"
+Source Context: "{context_text}"
+
+INSTRUCTIONS:
+1. Determine if the Claim is directly supported, partially supported, or not supported (hallucinated).
+2. Assign a confidence score from 0.0 to 1.0 (1.0 = perfect support).
+3. Provide a very brief reasoning (max 15 words).
+
+OUTPUT FORMAT (JSON):
+{{
+  "verified": true/false,
+  "score": 0.0-1.0,
+  "reasoning": "Reasoning string"
+}}
+
+Strictly output valid JSON only."""
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            response_format={ "type": "json_object" }
+        )
+        import json
+        result = json.loads(response.choices[0].message.content or "{}")
+        return {
+            "verified": result.get("verified", False),
+            "score": result.get("score", 0.0),
+            "reasoning": result.get("reasoning", "Unknown error during verification")
+        }
+    except Exception as e:
+        return {
+            "verified": False,
+            "score": 0.0,
+            "reasoning": f"Verification failed: {str(e)}"
+        }
+
+
 def run(answer: str, citations: list[dict], chunks: list[dict]) -> dict:
-    """Execute the verification step: check each claim against source documents.
+    """Execute the verification step: check each claim against source documents using LLM.
 
     For each claim with a citation [N]:
     - Find the referenced chunk
-    - Fuzzy-match the claim text against the chunk text
-    - Flag as verified (score >= 60) or hallucination (score < 60)
+    - Perform semantic LLM verification
+    - Flag as verified or hallucination based on LLM output
 
     Returns:
-        dict with keys: verified, hallucinations, verification_summary, step_log
+        dict with keys: verified_claims, hallucinations, verification_rate, step_log
     """
     start = time.time()
 
     claims = _extract_claims(answer)
-    verified: list[dict] = []
-    hallucinations: list[dict] = []
+    results: list[dict] = []
     logs: list[str] = [f"Extracted {len(claims)} claims with citations"]
 
     for claim in claims:
-        best_score = 0
-        best_source = ""
+        best_llm_result = {"verified": False, "score": 0.0, "reasoning": "No context found"}
         best_ref = 0
+        best_source_snippet = ""
 
         for ref_num in claim["refs"]:
             idx = ref_num - 1  # Convert to 0-indexed
             if 0 <= idx < len(chunks):
                 chunk_text = chunks[idx]["text"]
-                # Use token_set_ratio for best partial matching
-                score = fuzz.token_set_ratio(
-                    _normalize(claim["text"]),
-                    _normalize(chunk_text),
-                )
-                if score > best_score:
-                    best_score = score
-                    best_source = chunk_text[:200]
+                
+                # Semantic LLM Check
+                verify_res = _llm_verify_claim(claim["text"], chunk_text)
+                
+                if verify_res["score"] > best_llm_result["score"]:
+                    best_llm_result = verify_res
                     best_ref = ref_num
+                    best_source_snippet = chunk_text[:200]
 
         entry = {
             "claim": claim["text"],
             "original": claim["original"],
             "ref": best_ref,
-            "match_score": best_score / 100.0,
-            "source_snippet": best_source,
+            "match_score": best_llm_result["score"],
+            "reasoning": best_llm_result["reasoning"],
+            "source_snippet": best_source_snippet,
+            "status": "verified" if best_llm_result["verified"] else "hallucination"
         }
-
-        if best_score >= 60:
-            entry["status"] = "verified"
-            verified.append(entry)
-            logs.append(f"✓ Claim verified against [{best_ref}] (score: {best_score}%)")
+        
+        results.append(entry)
+        
+        if entry["status"] == "verified":
+            logs.append(f"✓ Verified against [{best_ref}] ({int(entry['match_score']*100)}%): {entry['reasoning']}")
         else:
-            entry["status"] = "hallucination"
-            hallucinations.append(entry)
-            logs.append(f"✗ HALLUCINATION detected: \"{claim['text'][:60]}...\" (score: {best_score}%)")
+            logs.append(f"✗ HALLUCINATION in [{best_ref}] ({int(entry['match_score']*100)}%): {entry['reasoning']}")
 
     elapsed_ms = int((time.time() - start) * 1000)
 
-    # Overall verification rate
-    total = len(verified) + len(hallucinations)
-    verification_rate = len(verified) / total if total > 0 else 1.0
+    # Summary metrics
+    verified_count = sum(1 for r in results if r["status"] == "verified")
+    hallucination_count = len(results) - verified_count
+    verification_rate = verified_count / len(results) if results else 1.0
 
     step_log = {
         "step": "verify",
@@ -100,17 +150,19 @@ def run(answer: str, citations: list[dict], chunks: list[dict]) -> dict:
         "status": "completed",
         "time_ms": elapsed_ms,
         "output": {
-            "total_claims": total,
-            "verified_count": len(verified),
-            "hallucination_count": len(hallucinations),
+            "total_claims": len(results),
+            "verified_count": verified_count,
+            "hallucination_count": hallucination_count,
             "verification_rate": round(verification_rate, 3),
+            "claims": results # Include full structured data
         },
         "logs": logs,
     }
 
     return {
-        "verified": verified,
-        "hallucinations": hallucinations,
+        "verified_claims": [r for r in results if r["status"] == "verified"],
+        "hallucinations": [r for r in results if r["status"] == "hallucination"],
         "verification_rate": verification_rate,
+        "results": results, # Full structured list
         "step_log": step_log,
     }

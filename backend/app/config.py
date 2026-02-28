@@ -19,8 +19,16 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./app.db"
 
-    # OpenAI
+    # LLM Providers (OpenAI-compatible)
     OPENAI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    TOGETHER_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    MISTRAL_API_KEY: str = ""
+    OPENROUTER_API_KEY: str = ""
+    
+    # Selected Provider (default: openai)
+    LLM_PROVIDER: str = "openai" 
 
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_db"
