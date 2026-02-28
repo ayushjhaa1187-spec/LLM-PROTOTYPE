@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   LayoutDashboard,
   UploadCloud,
@@ -73,8 +74,8 @@ export default function DashboardLayout() {
                   <Link
                     to={item.path}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
-                        ? "bg-blue-600 text-white"
-                        : "hover:bg-slate-800 hover:text-white"
+                      ? "bg-blue-600 text-white"
+                      : "hover:bg-slate-800 hover:text-white"
                       }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -113,8 +114,19 @@ export default function DashboardLayout() {
             <span className="text-xs text-slate-400">{user?.email}</span>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+        <div className="flex-1 overflow-y-auto p-6 relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

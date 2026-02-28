@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Send, FileText, Bookmark, Save, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 import { apiFetch } from "../lib/api";
 
 type Citation = {
@@ -108,7 +109,13 @@ export default function QueryChat() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            key={i}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
             <div className={`max-w-[80%] rounded-2xl p-5 shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
               <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</p>
 
@@ -143,15 +150,19 @@ export default function QueryChat() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
         {loading && (
-          <div className="flex justify-start">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-start"
+          >
             <div className="bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-sm p-5 shadow-sm flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
               <span className="text-sm text-slate-500">Running RAG pipeline...</span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
