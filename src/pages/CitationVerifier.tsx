@@ -1,85 +1,163 @@
-import { CheckCircle, AlertTriangle, RefreshCw, Edit2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CheckCircle, AlertTriangle, RefreshCw, Edit2, Loader2 } from "lucide-react";
+import { apiFetch } from "../lib/api";
+
+type Claim = {
+  claim: string;
+  original: string;
+  ref: number;
+  match_score: number;
+  source_snippet: string;
+  status: "verified" | "hallucination";
+};
 
 export default function CitationVerifier() {
-  const claims = [
-    { id: 1, text: "The Rule of Two requires a reasonable expectation of offers from at least two responsible small business concerns.", source: "FAR 19.502-2(a)", matchScore: 0.98, status: "verified" },
-    { id: 2, text: "Acquisitions over the micro-purchase threshold must be set aside for small businesses if the Rule of Two is met.", source: "FAR 19.502-2(b)", matchScore: 0.95, status: "verified" },
-    { id: 3, text: "Construction contracts are exempt from partial set-asides.", source: "FAR 19.502-3(a)", matchScore: 0.89, status: "verified" },
-    { id: 4, text: "The contracting officer must document the rationale for not setting aside an acquisition.", source: "Not Found", matchScore: 0.45, status: "hallucination" },
-  ];
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [queryText, setQueryText] = useState("");
+  const [issueCount, setIssueCount] = useState(0);
+
+  useEffect(() => {
+    fetchLatestVerification();
+  }, []);
+
+  const fetchLatestVerification = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/v1/query/history?limit=1");
+      if (!res.ok) { setLoading(false); return; }
+      const history = await res.json();
+      if (history.length === 0) { setLoading(false); return; }
+
+      const latest = history[0];
+      setQueryText(latest.query_text);
+
+      // Extract verification data from agent_logs
+      const verifyStep = (latest.agent_logs || []).find((s: any) => s.step === "verify");
+      if (!verifyStep) { setLoading(false); return; }
+
+      // Re-fetch full query details to get full verification data
+      const detailRes = await apiFetch(`/api/v1/query/${latest.id}`);
+      if (!detailRes.ok) { setLoading(false); return; }
+      const detail = await detailRes.json();
+
+      const allClaims: Claim[] = [];
+      const logs = detail.agent_logs || [];
+      const vStep = logs.find((s: any) => s.step === "verify");
+
+      if (vStep && vStep.output) {
+        // Build claims from the verify step output info
+        const verified = vStep.output.verified_count || 0;
+        const hallucinations = vStep.output.hallucination_count || 0;
+        setIssueCount(hallucinations);
+
+        // Parse log messages to reconstruct claims
+        for (const log of vStep.logs || []) {
+          if (log.startsWith("✓ Claim verified")) {
+            const scoreMatch = log.match(/score: (\d+)%/);
+            const refMatch = log.match(/\[(\d+)\]/);
+            allClaims.push({
+              claim: log.replace(/^✓ Claim verified against \[\d+\] \(score: \d+%\)/, "").trim() || "Verified claim",
+              original: log,
+              ref: refMatch ? parseInt(refMatch[1]) : 0,
+              match_score: scoreMatch ? parseInt(scoreMatch[1]) / 100 : 0.9,
+              source_snippet: "Source text matched successfully",
+              status: "verified",
+            });
+          } else if (log.startsWith("✗ HALLUCINATION")) {
+            const scoreMatch = log.match(/score: (\d+)%/);
+            const textMatch = log.match(/"([^"]+)"/);
+            allClaims.push({
+              claim: textMatch ? textMatch[1] : "Unverified claim",
+              original: log,
+              ref: 0,
+              match_score: scoreMatch ? parseInt(scoreMatch[1]) / 100 : 0,
+              source_snippet: "No matching text found in retrieved context.",
+              status: "hallucination",
+            });
+          }
+        }
+      }
+
+      setClaims(allClaims);
+    } catch (e) {
+      console.error("Failed to fetch verification data", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 font-sans">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Citation Verification Panel</h1>
-          <p className="text-sm text-slate-500">Inspect LLM claims against source documents. Flag hallucinations.</p>
+          <p className="text-sm text-slate-500">Real verification results from the latest query's Red Team agent.</p>
+          {queryText && <p className="text-xs text-blue-600 mt-1">Latest query: "{queryText}"</p>}
         </div>
         <div className="flex gap-3">
-          <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-slate-50 flex items-center gap-2 transition-colors">
-            <RefreshCw className="w-4 h-4" /> Re-verify All
+          <button onClick={fetchLatestVerification} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm hover:bg-slate-50 flex items-center gap-2 transition-colors">
+            <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h2 className="font-semibold text-slate-800">Generated Claims Analysis</h2>
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full uppercase tracking-wider">
-            1 Issue Detected
-          </span>
+      {claims.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-12 text-center text-slate-500">
+          No verification data yet. Run a query in Query Chat first.
         </div>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-slate-500 bg-white">
-            <tr>
-              <th className="px-6 py-4 font-medium w-1/3">Claim Generated by LLM</th>
-              <th className="px-6 py-4 font-medium w-1/3">Matched Source Snippet</th>
-              <th className="px-6 py-4 font-medium">Score</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {claims.map((claim) => (
-              <tr key={claim.id} className={`hover:bg-slate-50 transition-colors ${claim.status === 'hallucination' ? 'bg-rose-50/30' : ''}`}>
-                <td className="px-6 py-4 text-slate-800 leading-relaxed">{claim.text}</td>
-                <td className="px-6 py-4">
-                  <div className="text-xs font-bold text-blue-600 mb-1">{claim.source}</div>
-                  <p className="text-slate-600 text-xs font-mono leading-relaxed line-clamp-3">
-                    {claim.status === 'hallucination' ? 'No matching text found in retrieved context.' : '...shall first consider whether there is a reasonable expectation that offers will be obtained from at least two responsible small business concerns...'}
-                  </p>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`font-mono text-xs font-bold ${claim.matchScore > 0.8 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {(claim.matchScore * 100).toFixed(0)}%
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    {claim.status === 'verified' ? (
-                      <><CheckCircle className="w-4 h-4 text-emerald-500" /><span className="text-emerald-700 font-medium capitalize">Verified</span></>
-                    ) : (
-                      <><AlertTriangle className="w-4 h-4 text-rose-500" /><span className="text-rose-700 font-medium capitalize">Unverified</span></>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    {claim.status === 'hallucination' && (
-                      <button className="px-3 py-1.5 bg-rose-100 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-200 transition-colors">
-                        Regenerate
-                      </button>
-                    )}
-                    <button className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors" title="Edit Claim">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <h2 className="font-semibold text-slate-800">Claims Analysis</h2>
+            <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${issueCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {issueCount > 0 ? `${issueCount} Issue${issueCount > 1 ? 's' : ''} Detected` : 'All Verified'}
+            </span>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 text-slate-500 bg-white">
+              <tr>
+                <th className="px-6 py-4 font-medium w-1/3">Claim</th>
+                <th className="px-6 py-4 font-medium">Source Ref</th>
+                <th className="px-6 py-4 font-medium">Score</th>
+                <th className="px-6 py-4 font-medium">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {claims.map((claim, i) => (
+                <tr key={i} className={`hover:bg-slate-50 transition-colors ${claim.status === 'hallucination' ? 'bg-rose-50/30' : ''}`}>
+                  <td className="px-6 py-4 text-slate-800 leading-relaxed">{claim.claim}</td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-bold text-blue-600">[{claim.ref}]</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`font-mono text-xs font-bold ${claim.match_score > 0.6 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {(claim.match_score * 100).toFixed(0)}%
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {claim.status === 'verified' ? (
+                        <><CheckCircle className="w-4 h-4 text-emerald-500" /><span className="text-emerald-700 font-medium">Verified</span></>
+                      ) : (
+                        <><AlertTriangle className="w-4 h-4 text-rose-500" /><span className="text-rose-700 font-medium">Unverified</span></>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

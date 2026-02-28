@@ -1,0 +1,32 @@
+# FastAPI & Server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Database
+sqlalchemy==2.0.36
+
+# Auth
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.4.0
+bcrypt==4.2.1
+
+# LLM & RAG
+openai==1.82.0
+langchain-text-splitters==0.3.8
+
+# Document Processing
+PyMuPDF==1.25.5
+python-docx==1.1.2
+
+# Utilities
+python-dotenv==1.1.0
+pydantic-settings==2.8.1
+slowapi==0.1.9
+thefuzz==0.22.1
+numpy
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.3
+httpx==0.28.1
