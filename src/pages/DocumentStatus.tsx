@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { FileText, CheckCircle, Loader2, AlertCircle, RefreshCw, Trash2 } from "lucide-react";
+import { FileText, CheckCircle, Loader2, AlertCircle, RefreshCw, Trash2, HardDrive } from "lucide-react";
+import { motion } from "motion/react";
 import { apiFetch } from "../lib/api";
 
 type DocStatus = {
@@ -91,8 +92,10 @@ export default function DocumentStatus() {
             <p className="text-slate-500">Loading document status...</p>
           </div>
         ) : docs.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">
-            No documents uploaded yet. Go to Upload Documents to get started.
+          <div className="p-16 text-center text-slate-500 flex flex-col items-center">
+            <HardDrive className="w-12 h-12 text-slate-300 mb-4" />
+            <p className="text-slate-500 font-medium">No documents indexed</p>
+            <p className="text-sm text-slate-400 mt-1">Go to Upload Documents to start building your Vector Engine knowledge base.</p>
           </div>
         ) : (
           <table className="w-full text-left text-sm">
@@ -108,8 +111,14 @@ export default function DocumentStatus() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {docs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+              {docs.map((doc, i) => (
+                <motion.tr
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  key={doc.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       {statusIcon(doc.status)}
@@ -131,13 +140,13 @@ export default function DocumentStatus() {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="text-rose-500 hover:text-rose-700 p-1"
+                      className="text-rose-500 hover:text-rose-700 p-2 rounded-lg hover:bg-rose-50 transition-colors"
                       title="Delete Document"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>

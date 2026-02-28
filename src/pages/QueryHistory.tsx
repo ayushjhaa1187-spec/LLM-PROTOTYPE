@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Download, RefreshCw, Filter, Loader2 } from "lucide-react";
+import { Search, Download, RefreshCw, Filter, Loader2, History } from "lucide-react";
+import { motion } from "motion/react";
 import { apiFetch } from "../lib/api";
 
 export default function QueryHistory() {
@@ -62,11 +63,21 @@ export default function QueryHistory() {
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">No queries yet. Try asking something in Query Chat.</td>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <History className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No query history found</p>
+                    <p className="text-sm text-slate-400 mt-1">Submit your first question in the Query Chat to see it here.</p>
+                  </td>
                 </tr>
               ) : (
                 history.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                  <motion.tr
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    key={i}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
                     <td className="px-6 py-4 text-slate-600 whitespace-nowrap text-xs">{new Date(item.created_at).toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <div className="max-w-xs truncate text-slate-900 font-medium">{item.query_text}</div>
@@ -74,15 +85,15 @@ export default function QueryHistory() {
                     <td className="px-6 py-4 text-slate-600">{(item.citations || []).length}</td>
                     <td className="px-6 py-4">
                       <span className={`font-mono text-xs font-bold ${item.confidence_score >= 0.7 ? 'text-emerald-600' :
-                          item.confidence_score >= 0.4 ? 'text-amber-600' :
-                            'text-rose-600'
+                        item.confidence_score >= 0.4 ? 'text-amber-600' :
+                          'text-rose-600'
                         }`}>
                         {(item.confidence_score * 100).toFixed(0)}%
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs font-mono">{item.processing_time_ms}ms</td>
                     <td className="px-6 py-4 text-slate-500 text-xs font-mono">{item.tokens_used}</td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
