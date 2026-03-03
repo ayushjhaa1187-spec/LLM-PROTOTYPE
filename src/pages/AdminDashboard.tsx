@@ -12,6 +12,10 @@ export default function AdminDashboard() {
   const [updatingLlm, setUpdatingLlm] = useState(false);
   const [ticker, setTicker] = useState("");
   const [hfDataset, setHfDataset] = useState("");
+  const [clQuery, setClQuery] = useState("");
+  const [kaggleSlug, setKaggleSlug] = useState("");
+  const [pubmedQuery, setPubmedQuery] = useState("");
+  const [specPlatform, setSpecPlatform] = useState("");
   const [ingesting, setIngesting] = useState(false);
 
   useEffect(() => {
@@ -71,6 +75,64 @@ export default function AdminDashboard() {
       });
       if (res.ok) alert(`Ingestion for ${hfDataset} started.`);
     } finally { setIngesting(false); setHfDataset(""); }
+  };
+
+  const handleClIngest = async () => {
+    if (!clQuery) return;
+    setIngesting(true);
+    try {
+      const res = await apiFetch("/api/v1/admin/ingest/courtlistener", {
+        method: "POST",
+        body: JSON.stringify({ query: clQuery, limit: 3 }),
+      });
+      if (res.ok) alert(`CourtListener ingestion for "${clQuery}" started.`);
+    } finally { setIngesting(false); setClQuery(""); }
+  };
+
+  const handleKaggleIngest = async () => {
+    if (!kaggleSlug) return;
+    setIngesting(true);
+    try {
+      const res = await apiFetch("/api/v1/admin/ingest/kaggle", {
+        method: "POST",
+        body: JSON.stringify({ dataset_slug: kaggleSlug }),
+      });
+      if (res.ok) alert(`Kaggle ingestion for ${kaggleSlug} started.`);
+    } finally { setIngesting(false); setKaggleSlug(""); }
+  };
+
+  const handlePubmedIngest = async () => {
+    if (!pubmedQuery) return;
+    setIngesting(true);
+    try {
+      const res = await apiFetch("/api/v1/admin/ingest/pubmed", {
+        method: "POST",
+        body: JSON.stringify({ query: pubmedQuery }),
+      });
+      if (res.ok) alert(`PubMed ingestion for "${pubmedQuery}" started.`);
+    } finally { setIngesting(false); setPubmedQuery(""); }
+  };
+
+  const handleSpecIngest = async (p: string) => {
+    setIngesting(true);
+    try {
+      const res = await apiFetch("/api/v1/admin/ingest/specialized", {
+        method: "POST",
+        body: JSON.stringify({ platform: p }),
+      });
+      if (res.ok) alert(`Specialized ingestion for ${p} started.`);
+    } finally { setIngesting(false); }
+  };
+
+  const handleRegIngest = async (region: string) => {
+    setIngesting(true);
+    try {
+      const res = await apiFetch("/api/v1/admin/ingest/regulations", {
+        method: "POST",
+        body: JSON.stringify({ region }),
+      });
+      if (res.ok) alert(`Regulatory ingestion for ${region} started.`);
+    } finally { setIngesting(false); }
   };
 
   const handleUpdateLlm = async (provider: string) => {
@@ -166,6 +228,15 @@ export default function AdminDashboard() {
                 {ds.api && (
                   <a href={ds.api} target="_blank" className="text-[10px] font-bold text-emerald-500 hover:underline">API Docs</a>
                 )}
+                {['fineweb', 'cosmopedia', 'the_stack', 'common_corpus'].includes(ds.id.toLowerCase()) && (
+                  <button
+                    onClick={() => handleSpecIngest(ds.id.toLowerCase())}
+                    disabled={ingesting}
+                    className="text-[10px] font-bold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Auto-Pull
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -259,6 +330,77 @@ export default function AdminDashboard() {
               >
                 Pull HF
               </button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Law Query (e.g. copyright)"
+                value={clQuery}
+                onChange={(e) => setClQuery(e.target.value)}
+                className="flex-1 text-xs border border-slate-200 rounded px-3 py-2 outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={handleClIngest}
+                disabled={ingesting || !clQuery}
+                className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+              >
+                Pull Law
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Kaggle Slug (user/dataset)"
+                value={kaggleSlug}
+                onChange={(e) => setKaggleSlug(e.target.value)}
+                className="flex-1 text-xs border border-slate-200 rounded px-3 py-2 outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={handleKaggleIngest}
+                disabled={ingesting || !kaggleSlug}
+                className="bg-amber-600 text-white text-[10px] font-bold px-3 py-2 rounded hover:bg-amber-700 disabled:opacity-50"
+              >
+                Pull Kaggle
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="PubMed Search"
+                value={pubmedQuery}
+                onChange={(e) => setPubmedQuery(e.target.value)}
+                className="flex-1 text-xs border border-slate-200 rounded px-3 py-2 outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={handlePubmedIngest}
+                disabled={ingesting || !pubmedQuery}
+                className="bg-rose-600 text-white text-[10px] font-bold px-3 py-2 rounded hover:bg-rose-700 disabled:opacity-50"
+              >
+                Pull Sci
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+              <h3 className="text-xs font-bold text-slate-800">Global Regulatory Seeds</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleRegIngest("EU")}
+                  disabled={ingesting}
+                  className="bg-slate-800 text-white text-[10px] font-bold py-2 rounded hover:bg-black disabled:opacity-50"
+                >
+                  Pull EU (GDPR/AI Act)
+                </button>
+                <button
+                  onClick={() => handleRegIngest("US")}
+                  disabled={ingesting}
+                  className="bg-slate-800 text-white text-[10px] font-bold py-2 rounded hover:bg-black disabled:opacity-50"
+                >
+                  Pull US (CCPA/HIPAA)
+                </button>
+              </div>
             </div>
 
             <button

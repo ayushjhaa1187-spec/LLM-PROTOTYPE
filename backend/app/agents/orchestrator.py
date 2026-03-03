@@ -57,9 +57,24 @@ def run_pipeline(query: str, document_ids: list[str] = None) -> dict:
     )
     agent_logs.append(verify_result["step_log"])
 
-    # ── Step 4: Score (compute final confidence) ────────────────────
-    score_start = time.time()
+    # ── Step 4: Specialized Analysis (Conditional) ──────────────────
+    contract_analysis = None
+    compliance_analysis = None
+    
+    query_lower = query.lower()
+    
+    if any(k in query_lower for k in ["contract", "agreement", "lease", "clause", "terms"]):
+        from app.agents import contract_agent
+        contract_text = "\n\n".join([c["text"] for c in chunks[:2]])
+        contract_analysis = contract_agent.run(contract_text, context=draft_result["answer"])
 
+    if any(k in query_lower for k in ["compliance", "regulation", "law", "gdpr", "legal", "regional"]):
+        from app.agents import compliance_agent
+        compliance_analysis = compliance_agent.run(query, context=draft_result["answer"])
+
+    # ── Step 5: Score (compute final confidence) ────────────────────
+    score_start = time.time()
+    
     # Blend retrieval confidence with verification rate
     retrieval_confidence = draft_result["confidence"]
     verification_rate = verify_result["verification_rate"]
@@ -106,4 +121,6 @@ def run_pipeline(query: str, document_ids: list[str] = None) -> dict:
             "hallucination_count": len(verify_result["hallucinations"]),
             "verification_rate": round(verification_rate, 3),
         },
+        "contract_analysis": contract_analysis,
+        "compliance_analysis": compliance_analysis,
     }

@@ -16,30 +16,34 @@ import TeamAccess from "./pages/TeamAccess";
 import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
 
+import ErrorBoundary from "./components/ErrorBoundary";
+
 function App() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<AuthLogin />} />
-      <Route path="/workspaces" element={<WorkspaceSelector />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<AuthLogin />} />
+        <Route path="/workspaces" element={<WorkspaceSelector />} />
 
-      {/* Protected Dashboard Routes */}
-      <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/upload" element={<UploadDocuments />} />
-        <Route path="/documents/status" element={<DocumentStatus />} />
-        <Route path="/documents/:id" element={<DocumentDetail />} />
-        <Route path="/vector-manager" element={<VectorManager />} />
-        <Route path="/chat" element={<QueryChat />} />
-        <Route path="/agent-steps" element={<AgentSteps />} />
-        <Route path="/verifier" element={<CitationVerifier />} />
-        <Route path="/history" element={<QueryHistory />} />
-        <Route path="/team" element={<TeamAccess />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-    </Routes>
+        {/* Protected Dashboard Routes */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/upload" element={<UploadDocuments />} />
+          <Route path="/documents/status" element={<DocumentStatus />} />
+          <Route path="/documents/:id" element={<DocumentDetail />} />
+          <Route path="/vector-manager" element={<VectorManager />} />
+          <Route path="/chat" element={<QueryChat />} />
+          <Route path="/agent-steps" element={<AgentSteps />} />
+          <Route path="/verifier" element={<CitationVerifier />} />
+          <Route path="/history" element={<QueryHistory />} />
+          <Route path="/team" element={<TeamAccess />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 

@@ -69,10 +69,16 @@ app.include_router(admin_router)
 # ── Health check ────────────────────────────────────────────────────
 @app.get("/api/v1/health")
 def health_check():
-    from app.services import vector_store
-    vec_stats = vector_store.get_collection_stats()
+    try:
+        from app.services import vector_store
+        vec_stats = vector_store.get_collection_stats()
+        chunks = vec_stats.get("total_chunks", 0)
+    except Exception as e:
+        print(f"Health check vector store error: {e}")
+        chunks = 0
+        
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
-        "vector_chunks": vec_stats["total_chunks"],
+        "vector_chunks": chunks,
     }

@@ -17,26 +17,43 @@ export default function AuthLogin() {
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      const trimmedFullName = fullName.trim();
       const endpoint = isRegister ? "/api/v1/auth/register" : "/api/v1/auth/login";
-      const body: any = { email, password };
-      if (isRegister) body.full_name = fullName;
+      const body: any = { email: trimmedEmail, password };
+      if (isRegister) body.full_name = trimmedFullName;
 
+      // Use a consistent base URL or relative path handled by proxy
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        const text = await res.text();
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.error("JSON parse error:", e);
+            throw new Error("Invalid response from server");
+          }
+        }
+      }
 
       if (!res.ok) {
-        setError(data.detail || "Authentication failed");
+        setError(data.detail || data.error || `Server error (${res.status}): Please check if the backend is running.`);
         return;
       }
 
       setAuth(data.access_token, data.user);
       navigate("/dashboard");
     } catch (err: any) {
+      console.error("Auth error:", err);
       setError(err.message || "Network error — is the backend running?");
     } finally {
       setLoading(false);

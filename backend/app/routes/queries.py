@@ -9,9 +9,28 @@ from app.models.query import QueryRecord
 from app.models.audit import AuditLog
 from app.models.user import User
 from app.agents import orchestrator
+from app.services import global_search as gs_service
+from app.services import report_service
 from app.utils.security import get_current_user
+from fastapi.responses import StreamingResponse
+import io
 
 router = APIRouter(prefix="/api/v1/query", tags=["query"])
+
+
+@router.post("/export-pdf")
+def export_query_pdf(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Generate and download a compliance PDF report."""
+    raw_pdf = report_service.generate_compliance_pdf(data)
+    
+    return StreamingResponse(
+        io.BytesIO(raw_pdf),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=compliance_report.pdf"}
+    )
 
 
 class QueryRequest(BaseModel):
@@ -27,6 +46,16 @@ class QueryRequest(BaseModel):
         if len(v) > 2000:
             raise ValueError("Query is too long (maximum 2000 characters)")
         return v
+
+
+@router.post("/global-search")
+def run_global_search(
+    request: QueryRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Deep discovery across multiple platforms."""
+    return gs_service.global_search(request.query, db, current_user.id)
 
 
 def _query_to_dict(q: QueryRecord) -> dict:
@@ -108,6 +137,8 @@ def run_query(
         "processing_time_ms": result["processing_time_ms"],
         "agent_logs": result["agent_logs"],
         "verification": result["verification"],
+        "contract_analysis": result.get("contract_analysis"),
+        "compliance_analysis": result.get("compliance_analysis"),
     }
 
 

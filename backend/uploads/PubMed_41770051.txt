@@ -1,0 +1,3 @@
+TITLE: LLM-guided multimodal attention network for robust multiclass Parkinson's disease diagnosis.
+
+ABSTRACT: Accurate identification of Parkinson's disease (PD), particularly during its prodromal stage, remains a major clinical challenge due to heterogeneous symptom presentation and overlapping neurological patterns. This study proposes an LLM-Guided Multimodal Attention Network (LLM-MAN) to improve PD staging by jointly modeling structural MRI and clinical/cognitive metadata.

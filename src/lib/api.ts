@@ -30,7 +30,19 @@ export function clearAuth() {
 }
 
 export function isAuthenticated(): boolean {
-    return !!getToken();
+    const token = getToken();
+    if (!token) return false;
+
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+            clearAuth();
+            return false;
+        }
+        return true;
+    } catch {
+        return !!token;
+    }
 }
 
 /** Authenticated fetch wrapper. Auto-adds Bearer token, handles 401. */

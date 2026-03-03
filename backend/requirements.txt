@@ -30,7 +30,11 @@ requests
 sec-edgar-downloader
 datasets
 beautifulsoup4
-
+fpdf2
+kaggle
+scaleapi
+gretel-client
+ 
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.3

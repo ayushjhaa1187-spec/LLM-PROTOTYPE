@@ -14,6 +14,26 @@ def run(query: str, k: int = 5, document_ids: list[str] = None) -> dict:
 
     chunks = retrieve_relevant_chunks(query, k=k, document_ids=document_ids)
 
+    # Apply Authority Weighting: Boost chunks from regulation/law sources
+    for chunk in chunks:
+        meta = chunk.get("metadata", {})
+        tags = meta.get("tags") or []
+        filename = meta.get("source", "").lower()
+        
+        # Determine weighting boost (1.2x for regulatory sources)
+        weight = 1.0
+        if any(t in tags for t in ["compliance", "law", "regulation", "statute"]):
+            weight = 1.2
+        if any(k in filename for k in ["gdpr", "ccpa", "hipaa", "ai_act", "act_", "law_"]):
+            weight = 1.3  # Official frameworks get higher boost
+            
+        # Adjust internal rank if distance is available
+        if "distance" in chunk:
+            chunk["distance"] = chunk["distance"] / weight
+
+    # Re-sort after weighting
+    chunks = sorted(chunks, key=lambda x: x.get("distance", 1.0))
+
     elapsed_ms = int((time.time() - start) * 1000)
 
     step_log = {

@@ -202,6 +202,95 @@ def ingest_hf_data(
     return {"detail": f"Hugging Face ingestion for {body.dataset_name} started"}
 
 
+class CourtListenerIngestRequest(BaseModel):
+    query: str
+    limit: int = 3
+
+@router.post("/ingest/courtlistener")
+def ingest_cl_data(
+    body: CourtListenerIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Search and pull case law from CourtListener."""
+    import threading
+    from app.services.ingestors import ingest_courtlistener
+    
+    thread = threading.Thread(target=ingest_courtlistener, args=(body.query, db, current_user.id, body.limit))
+    thread.start()
+    return {"detail": f"CourtListener ingestion for '{body.query}' started"}
+
+class KaggleIngestRequest(BaseModel):
+    dataset_slug: str
+    limit: int = 50
+
+@router.post("/ingest/kaggle")
+def ingest_kaggle_data(
+    body: KaggleIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Download and pull data from Kaggle."""
+    import threading
+    from app.services.ingestors import ingest_kaggle_dataset
+    
+    thread = threading.Thread(target=ingest_kaggle_dataset, args=(body.dataset_slug, db, current_user.id))
+    thread.start()
+    return {"detail": f"Kaggle ingestion for {body.dataset_slug} started"}
+
+class PubMedIngestRequest(BaseModel):
+    query: str
+    limit: int = 5
+
+@router.post("/ingest/pubmed")
+def ingest_pubmed_data(
+    body: PubMedIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Pull scientific abstracts from PubMed."""
+    import threading
+    from app.services.ingestors import ingest_pubmed
+    
+    thread = threading.Thread(target=ingest_pubmed, args=(body.query, db, current_user.id, body.limit))
+    thread.start()
+    return {"detail": f"PubMed ingestion for '{body.query}' started"}
+
+class SpecializedIngestRequest(BaseModel):
+    platform: str # fineweb, cosmopedia, the_stack, etc.
+
+@router.post("/ingest/specialized")
+def ingest_specialized_data(
+    body: SpecializedIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Trigger ingestion for specialized high-scale datasets."""
+    import threading
+    from app.services.ingestors import ingest_specialized_llm_data
+    
+    thread = threading.Thread(target=ingest_specialized_llm_data, args=(body.platform, db, current_user.id))
+    thread.start()
+    return {"detail": f"Specialized ingestion for {body.platform} started"}
+
+class RegIngestRequest(BaseModel):
+    region: str # EU, US, etc.
+
+@router.post("/ingest/regulations")
+def ingest_reg_data(
+    body: RegIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Trigger ingestion for regional regulatory frameworks."""
+    import threading
+    from app.services.ingestors import ingest_regulatory_frameworks
+    
+    thread = threading.Thread(target=ingest_regulatory_frameworks, args=(body.region, db, current_user.id))
+    thread.start()
+    return {"detail": f"Regulatory ingestion for {body.region} started"}
+
+
 @router.get("/llm-config")
 def get_llm_config(
     current_user: User = Depends(require_role(UserRole.ADMIN)),

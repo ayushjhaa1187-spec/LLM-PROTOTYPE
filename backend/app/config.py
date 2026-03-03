@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
+    COURTLISTENER_API_KEY: str = ""
     
     # Selected Provider (default: openai)
     LLM_PROVIDER: str = "openai" 
