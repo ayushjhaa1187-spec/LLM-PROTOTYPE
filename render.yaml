@@ -5,7 +5,7 @@ services:
     dockerfilePath: backend/Dockerfile
     dockerContext: backend
     region: ohio
-    plan: starter
+    plan: free
     autoDeploy: true
     healthCheckPath: /api/v1/health
     envVars:
@@ -35,4 +35,4 @@ databases:
     databaseName: far_copilot
     user: far_admin
     region: ohio
-    plan: starter
+    plan: free
