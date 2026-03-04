@@ -68,10 +68,17 @@ This repository contains a natively generated `vercel.json` SPA configuration ho
 ### Render / AWS / Remote Hosts (Python Core APIs)
 Vercel is not designed to reliably execute stateful database indexing or vectorized mapping storage across the ephemeral serverless Lambda structure. 
 
-To deploy the Fast API service logic to production safely:
+**Automated Render Deployment**:
+We have included a `render.yaml` file that automatically configures everything for you on Render.com:
+1. Go to your Render Dashboard and click **New > Blueprint**.
+2. Connect this repository.
+3. Render will automatically provision the **PostgreSQL Database**, **Persistent Disk** (for ChromaDB rules mapping), and the **FastAPI Web Service**.
+4. Important: Set `OPENAI_API_KEY` in your Render Environment settings once deployed.
+
+**(Alternative) Manual Deployment**:
 1. Create a Web Service inside your cloud provider matching the internal `app.main` boot path. 
-2. Point the build context to the nested `/backend` directive.
-3. Configure your API secrets on that provider directly protecting SQLite database mappings. 
+2. Point the build context to the nested `backend/Dockerfile`.
+3. Configure persistent disks protecting SQLite/Chroma mappings, or supply an external `DATABASE_URL`.
 
 ---
 ### Comprehensive Testing Suite
