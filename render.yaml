@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: far-copilot-api
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    region: ohio
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: far-copilot-db
+          property: connectionString
+      - key: DEBUG
+        value: "False"
+      - key: APP_ENV
+        value: "production"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AUDIT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://far-copilot.vercel.app,http://localhost:5173"
+    disk:
+      name: far-data
+      mountPath: /app/chroma_db
+      sizeGB: 10
+
+databases:
+  - name: far-copilot-db
+    databaseName: far_copilot
+    user: far_admin
+    region: ohio
+    plan: starter
