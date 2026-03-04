@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config import settings
 from app.models.user import User, UserRole
 from app.models.document import Document
 from app.models.query import QueryRecord
@@ -289,6 +290,44 @@ def ingest_reg_data(
     thread = threading.Thread(target=ingest_regulatory_frameworks, args=(body.region, db, current_user.id))
     thread.start()
     return {"detail": f"Regulatory ingestion for {body.region} started"}
+
+
+class FARIngestRequest(BaseModel):
+    part_number: str  # e.g., "19", "22", "39"
+
+@router.post("/ingest/far")
+def ingest_far_part(
+    body: FARIngestRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Download and ingest a specific FAR part from acquisition.gov."""
+    import threading
+    from app.services.far_ingestion import ingest_far_part as do_ingest
+    
+    thread = threading.Thread(target=do_ingest, args=(body.part_number, db, current_user.id))
+    thread.start()
+    return {"detail": f"FAR Part {body.part_number} ingestion started"}
+
+
+@router.post("/ingest/far-hero-parts")
+def ingest_far_hero_parts(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Ingest all three hero FAR parts (19, 22, 39) plus supporting parts."""
+    import threading
+    from app.services.far_ingestion import ingest_far_part as do_ingest
+    
+    parts = ["19", "22", "39", "2", "13", "52"]
+    for part in parts:
+        thread = threading.Thread(target=do_ingest, args=(part, db, current_user.id))
+        thread.start()
+    
+    return {
+        "detail": f"Ingestion started for FAR Parts: {', '.join(parts)}",
+        "parts": parts,
+    }
 
 
 @router.get("/llm-config")

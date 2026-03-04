@@ -1,0 +1,43 @@
+[
+    {
+        "id": "GT-01",
+        "query": "What are the requirements for a small business set-aside under FAR Part 19?",
+        "expected_citations": [
+            "19.102",
+            "19.502-2"
+        ],
+        "expected_keywords": [
+            "size standard",
+            "fair market price",
+            "rule of two"
+        ],
+        "category": "Part 19 - Small Business"
+    },
+    {
+        "id": "GT-02",
+        "query": "Does Davis-Bacon Act apply to $1,500 construction contracts?",
+        "expected_answer_contains": "No",
+        "expected_citations": [
+            "22.403-1"
+        ],
+        "expected_keywords": [
+            "$2,000",
+            "threshold"
+        ],
+        "category": "Part 22 - Labor Standards"
+    },
+    {
+        "id": "GT-03",
+        "query": "What FedRAMP requirements apply to moderate-impact cloud deployments?",
+        "expected_citations": [
+            "39.101",
+            "FedRAMP"
+        ],
+        "expected_keywords": [
+            "security controls",
+            "authorization",
+            "NIST 800-53"
+        ],
+        "category": "Part 39 - IT/Cyber"
+    }
+]

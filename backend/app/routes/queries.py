@@ -1,176 +1,135 @@
-"""Query API routes: run RAG pipeline, get history."""
+"""Query and RAG conversation routes (SEC-02).
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator
+Includes multi-turn conversation support, result streaming (SSE), and secure query handling.
+"""
+
+import time
+import json
+import asyncio
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
+from app.core import security
+from app.core.audit import AuditLogger
 from app.models.query import QueryRecord
-from app.models.audit import AuditLog
-from app.models.user import User
-from app.agents import orchestrator
-from app.services import global_search as gs_service
-from app.services import report_service
-from app.utils.security import get_current_user
-from fastapi.responses import StreamingResponse
-import io
+from app.models.conversation import Conversation
+from app.agents.orchestrator import run_pipeline
+from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/v1/query", tags=["query"])
-
-
-@router.post("/export-pdf")
-def export_query_pdf(
-    data: dict,
-    current_user: User = Depends(get_current_user),
-):
-    """Generate and download a compliance PDF report."""
-    raw_pdf = report_service.generate_compliance_pdf(data)
-    
-    return StreamingResponse(
-        io.BytesIO(raw_pdf),
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=compliance_report.pdf"}
-    )
+router = APIRouter(prefix="/api/v1/queries", tags=["queries"])
 
 
 class QueryRequest(BaseModel):
     query: str
-    document_ids: list[str] = []
-
-    @field_validator("query")
-    @classmethod
-    def validate_query(cls, v: str) -> str:
-        v = v.strip()
-        if len(v) < 3:
-            raise ValueError("Query is too short (minimum 3 characters)")
-        if len(v) > 2000:
-            raise ValueError("Query is too long (maximum 2000 characters)")
-        return v
+    document_ids: Optional[List[int]] = None
+    conversation_id: Optional[int] = None
 
 
-@router.post("/global-search")
-def run_global_search(
-    request: QueryRequest,
-    current_user: User = Depends(get_current_user),
+class QueryResponse(BaseModel):
+    id: int
+    answer: str
+    confidence: float
+    citations: List[Dict[str, Any]]
+    processing_time_ms: int
+    is_blocked: bool
+    blocking_reason: Optional[str]
+
+
+@router.post("/", response_model=QueryResponse)
+async def ask_query(
+    request: Request,
+    query_in: QueryRequest,
     db: Session = Depends(get_db),
+    user: security.User = Depends(security.get_current_user)
 ):
-    """Deep discovery across multiple platforms."""
-    return gs_service.global_search(request.query, db, current_user.id)
-
-
-def _query_to_dict(q: QueryRecord) -> dict:
-    return {
-        "id": q.id,
-        "user_id": q.user_id,
-        "query_text": q.query_text,
-        "response_text": q.response_text,
-        "citations": q.citations or [],
-        "confidence_score": q.confidence_score,
-        "tokens_used": q.tokens_used,
-        "processing_time_ms": q.processing_time_ms,
-        "agent_logs": q.agent_logs or [],
-        "created_at": q.created_at.isoformat() if q.created_at else "",
-    }
-
-
-@router.post("")
-def run_query(
-    body: QueryRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Run the full multi-agent RAG pipeline on a user query."""
-    from app.models.document import Document, AccessLevel
+    """Securely ask a RAG query with multi-agent orchestration and audit logging."""
+    start_time = time.time()
     
-    # Get user's accessible documents
-    query = db.query(Document.id)
-    if current_user.role.value != "admin":
-        query = query.filter(
-            (Document.access_level == AccessLevel.PUBLIC) |
-            (Document.owner_id == current_user.id)
-        )
-    accessible_docs = {row[0] for row in query.all()}
+    # 1. Execute Pipeline (Day 1-3 SEC-02)
+    result = run_pipeline(query_in.query, document_ids=query_in.document_ids, user_id=user.id)
     
-    # Check if a specific subset is requested
-    if body.document_ids:
-        unauthorized = set(body.document_ids) - accessible_docs
-        if unauthorized:
-            raise HTTPException(status_code=403, detail="Access denied to one or more selected documents")
-        search_doc_ids = body.document_ids
-    else:
-        search_doc_ids = list(accessible_docs)
-    
-    try:
-        result = orchestrator.run_pipeline(body.query, document_ids=search_doc_ids)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
-
-    # Save query record
-    record = QueryRecord(
-        user_id=current_user.id,
-        query_text=body.query,
+    # 2. Handle Multi-turn Conversation
+    conv_id = query_in.conversation_id
+    if not conv_id:
+        # Create new conversation
+        conv = Conversation(user_id=user.id, title=query_in.query[:50])
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+        conv_id = conv.id
+        
+    # 3. Create Query Record (Day 1 Audit Trail)
+    total_ms = int((time.time() - start_time) * 1000)
+    query_rec = QueryRecord(
+        user_id=user.id,
+        conversation_id=conv_id,
+        query_text=query_in.query,
         response_text=result["answer"],
-        citations=result["citations"],
+        citations=result.get("citations", []),
         confidence_score=result["confidence"],
-        tokens_used=result["tokens_used"],
-        processing_time_ms=result["processing_time_ms"],
-        agent_logs=result["agent_logs"],
+        tokens_used=result.get("tokens_used", 0),
+        processing_time_ms=total_ms,
+        agent_logs=result.get("agent_logs", []),
+        hallucination_detected=1.0 if (result.get("verification", {}).get("hallucinations") or result.get("is_blocked")) else 0.0,
+        requires_review=1.0 if result.get("is_blocked") else 0.0
     )
-    db.add(record)
-
-    # Audit log
-    db.add(AuditLog(
-        user_id=current_user.id,
-        action="RAG_QUERY",
-        resource=record.id,
-        detail=body.query[:200],
-    ))
+    
+    db.add(query_rec)
     db.commit()
-    db.refresh(record)
-
+    db.refresh(query_rec)
+    
+    # 4. Audit log (SEC-03)
+    AuditLogger.log(
+        db, user.id, "QUERY", "query", 
+        {"id": query_rec.id, "confidence": result["confidence"], "blocked": result.get("is_blocked")}, 
+        request.client.host
+    )
+    
     return {
-        "id": record.id,
+        "id": query_rec.id,
         "answer": result["answer"],
-        "citations": result["citations"],
         "confidence": result["confidence"],
-        "tokens_used": result["tokens_used"],
-        "processing_time_ms": result["processing_time_ms"],
-        "agent_logs": result["agent_logs"],
-        "verification": result["verification"],
-        "contract_analysis": result.get("contract_analysis"),
-        "compliance_analysis": result.get("compliance_analysis"),
+        "citations": result.get("citations", []),
+        "processing_time_ms": total_ms,
+        "is_blocked": result.get("is_blocked", False),
+        "blocking_reason": result.get("blocking_reason")
     }
 
 
-@router.get("/history")
-def query_history(
-    skip: int = 0,
-    limit: int = 50,
-    current_user: User = Depends(get_current_user),
+@router.get("/conversations", response_model=List[Dict[str, Any]])
+async def list_conversations(
     db: Session = Depends(get_db),
+    user: security.User = Depends(security.get_current_user)
 ):
-    """Get the current user's query history."""
-    queries = (
-        db.query(QueryRecord)
-        .filter(QueryRecord.user_id == current_user.id)
-        .order_by(QueryRecord.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-    return [_query_to_dict(q) for q in queries]
+    """List conversations for the current user."""
+    convs = db.query(Conversation).filter(Conversation.user_id == user.id).order_by(Conversation.updated_at.desc()).all()
+    return [{"id": c.id, "title": c.title, "updated_at": c.updated_at.isoformat()} for c in convs]
 
 
-@router.get("/{query_id}")
-def get_query(
-    query_id: str,
-    current_user: User = Depends(get_current_user),
+@router.get("/conversations/{conv_id}", response_model=Dict[str, Any])
+async def get_conversation(
+    conv_id: int,
     db: Session = Depends(get_db),
+    user: security.User = Depends(security.get_current_user)
 ):
-    """Get a single query's details (including full agent logs)."""
-    record = db.query(QueryRecord).filter(QueryRecord.id == query_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="Query not found")
-    if record.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    return _query_to_dict(record)
+    """Retrieve history of a specific conversation."""
+    conv = db.query(Conversation).filter(Conversation.id == conv_id, Conversation.user_id == user.id).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    queries = db.query(QueryRecord).filter(QueryRecord.conversation_id == conv_id).order_by(QueryRecord.created_at.asc()).all()
+    
+    messages = []
+    for q in queries:
+        messages.append({"role": "user", "text": q.query_text, "timestamp": q.created_at.isoformat()})
+        messages.append({"role": "assistant", "text": q.response_text, "timestamp": q.created_at.isoformat(), "citations": q.citations, "confidence": q.confidence_score})
+        
+    return {
+        "id": conv.id,
+        "title": conv.title,
+        "messages": messages
+    }

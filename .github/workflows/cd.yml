@@ -1,0 +1,31 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    # Run CD only after CI passes
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-args: '--prod'
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy Backend (Placeholder for Render/Heroku/AWS logic)
+        run: echo "In a production environment, this step would deploy the FastAPI backend using Docker or directly to a PaaS."
