@@ -25,10 +25,7 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: "https://far-copilot.vercel.app,http://localhost:5173"
-    disk:
-      name: far-data
-      mountPath: /app/chroma_db
-      sizeGB: 10
+    
 
 databases:
   - name: far-copilot-db
