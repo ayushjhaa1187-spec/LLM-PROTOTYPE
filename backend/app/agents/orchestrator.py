@@ -21,8 +21,8 @@ def run_pipeline(query: str, document_ids: List[int] = None, user_id: int = None
     # ── Step 0: Semantic Cache Check ────────────────────────────────
     if settings.ENABLE_SEMANTIC_CACHE:
         # We need an embedding for the query to search the semantic cache
-        from app.services import vector_store
-        query_embedding = vector_store.get_embeddings(query)
+        from app.services import rag_service
+        query_embedding = rag_service._get_query_embedding(query)
         
         cached_res = semantic_cache.search_cache(query_embedding)
         if cached_res:
@@ -49,6 +49,10 @@ def run_pipeline(query: str, document_ids: List[int] = None, user_id: int = None
             "confidence": 0.0,
             "processing_time_ms": total_ms,
             "agent_logs": agent_logs,
+            "is_blocked": False,
+            "blocking_reason": None,
+            "contract_analysis": None,
+            "compliance_analysis": None
         }
 
     # ── Step 2: Draft (Generate Answer) ─────────────────────────────
@@ -115,6 +119,34 @@ def run_pipeline(query: str, document_ids: List[int] = None, user_id: int = None
         answer = f"I cannot confidently answer this question based on the provided documents. Reason: {blocking_reason}"
         final_confidence = min(final_confidence, 0.4) # Forced low
 
+    # ── Step 6: Enterprise Audit (Contract & Compliance Agents) ─────
+    contract_result = None
+    compliance_result = None
+    
+    if document_ids:
+        try:
+            from app.services.vector_store import get_document_chunks
+            import concurrent.futures
+            
+            # Fetch the uploaded document's full text
+            str_ids = [str(did) for did in document_ids]
+            doc_chunks = get_document_chunks(str_ids)
+            doc_text = "\n".join([c["text"] for c in doc_chunks])
+            
+            # Fetch the retrieved regulatory texts
+            context_str = "\n".join([c["text"] for c in chunks])
+            
+            # Run concurrent secondary analysis if the document exists
+            if doc_text:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                    f1 = executor.submit(contract_agent.run, doc_text[:15000], context_str[:15000])
+                    f2 = executor.submit(compliance_agent.run, query, context_str[:15000] + "\n\nDoc: " + doc_text[:15000])
+                    
+                    contract_result = f1.result(timeout=30)
+                    compliance_result = f2.result(timeout=30)
+        except Exception as e:
+            print(f"Enterprise Audit Agent Error: {e}")
+
     score_ms = int((time.time() - score_start) * 1000)
     total_ms = int((time.time() - pipeline_start) * 1000)
 
@@ -128,7 +160,9 @@ def run_pipeline(query: str, document_ids: List[int] = None, user_id: int = None
         "verification": robust_verify,
         "red_team": red_team_result,
         "is_blocked": blocked,
-        "blocking_reason": blocking_reason
+        "blocking_reason": blocking_reason,
+        "contract_analysis": contract_result,
+        "compliance_analysis": compliance_result
     }
 
     # Add to Semantic Cache if it was a high-confidence valid answer

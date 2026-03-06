@@ -17,6 +17,7 @@ type DocStatus = {
 export default function DocumentStatus() {
   const [docs, setDocs] = useState<DocStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchDocs = async () => {
     try {
@@ -24,9 +25,13 @@ export default function DocumentStatus() {
       if (res.ok) {
         const data = await res.json();
         setDocs(data);
+        setError(null);
+      } else {
+        setError("Failed to fetch documents status");
       }
     } catch (e) {
       console.error("Failed to fetch document status", e);
+      setError("Network error occurred");
     } finally {
       setLoading(false);
     }
@@ -84,6 +89,16 @@ export default function DocumentStatus() {
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">Error:</span> {error}
+          </div>
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700">×</button>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {loading ? (

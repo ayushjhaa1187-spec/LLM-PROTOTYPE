@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api";
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -17,9 +18,12 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setStats(data);
+      } else {
+        setError("Failed to fetch dashboard metrics");
       }
     } catch (e) {
       console.error(e);
+      setError("Network error occurred");
     } finally {
       setLoading(false);
     }
@@ -43,7 +47,15 @@ export default function Dashboard() {
   ] : [];
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Error:</span> {error}
+          </div>
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700">×</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard Overview</h1>
@@ -63,7 +75,7 @@ export default function Dashboard() {
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${kpi.bg} ${kpi.color}`}>
                 <Icon className="w-6 h-6" />
               </div>

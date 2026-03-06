@@ -1,0 +1,16 @@
+
+PROPRIETARY ENTERPRISE CONTRACT - ACME CORP
+Date: October 1st, 2026
+Run ID: 1772777013.499358
+
+1. SCOPE OF WORK
+ACME Corp agrees to provide cloud hosting services to the US Federal Government. All data will be hosted on servers located within the continental United States.
+
+2. LIMITATION OF LIABILITY
+ACME Corp's total liability under this agreement shall be strictly limited to the total amount paid by the client in the preceding 12 months, or $50,000, whichever is less. We disclaim all warranties.
+
+3. INDEMNIFICATION
+The client agrees to indemnify and hold harmless ACME Corp against any and all claims, including those arising from ACME Corp's own negligence.
+
+4. TERMINATION
+This contract may be terminated at will by ACME Corp with 24 hours notice.

@@ -18,10 +18,10 @@ export default function AuthLogin() {
 
     try {
       const trimmedEmail = email.trim();
-      const trimmedFullName = fullName.trim();
-      const endpoint = isRegister ? "/api/v1/auth/register" : "/api/v1/auth/login";
+      const trimmedName = fullName.trim();
+      const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
       const body: any = { email: trimmedEmail, password };
-      if (isRegister) body.full_name = trimmedFullName;
+      if (isRegister) body.name = trimmedName;
 
       // Use a consistent base URL or relative path handled by proxy
       const res = await fetch(endpoint, {
@@ -50,7 +50,7 @@ export default function AuthLogin() {
         return;
       }
 
-      setAuth(data.access_token, data.user);
+      setAuth(data.token, data.user);
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Auth error:", err);

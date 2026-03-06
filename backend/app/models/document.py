@@ -9,6 +9,27 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+import enum
+
+class ProcessingStatus(str, enum.Enum):
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class AccessLevel(str, enum.Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    RESTRICTED = "restricted"
+    ADMIN_ONLY = "admin_only"
+
+class SourceType(str, enum.Enum):
+    USER_UPLOAD = "user_upload"
+    REGULATION = "regulation"
+    POLICY = "policy"
+    EXTERNAL_DATASET = "external_dataset"
+
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -25,6 +46,11 @@ class Document(Base):
     sha256 = Column(String(64), unique=True, nullable=True)
     metadata_json = Column(JSON, default=dict)
     error_message = Column(Text, nullable=True)
+    
+    source_type = Column(String(50), nullable=True)
+    source_system = Column(String(50), nullable=True)
+    part_number = Column(String(20), nullable=True)
+    tags = Column(JSON, default=list)
     
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

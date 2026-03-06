@@ -19,6 +19,7 @@ from app.models.query import QueryRecord
 from app.models.conversation import Conversation
 from app.agents.orchestrator import run_pipeline
 from pydantic import BaseModel
+from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/api/v1/queries", tags=["queries"])
 
@@ -37,6 +38,8 @@ class QueryResponse(BaseModel):
     processing_time_ms: int
     is_blocked: bool
     blocking_reason: Optional[str]
+    contract_analysis: Optional[Dict[str, Any]] = None
+    compliance_analysis: Optional[Dict[str, Any]] = None
 
 
 @router.post("/", response_model=QueryResponse)
@@ -89,6 +92,22 @@ async def ask_query(
         request.client.host
     )
     
+    # 5. Webhook Events
+    try:
+        await dispatch_event(db, "query.completed", {
+            "id": query_rec.id, 
+            "confidence": result["confidence"], 
+            "blocked": result.get("is_blocked", False)
+        })
+        if result.get("is_blocked"):
+            await dispatch_event(db, "compliance.failed", {
+                "query_id": query_rec.id,
+                "blocking_reason": result.get("blocking_reason")
+            })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to dispatch event: {e}")
+    
     return {
         "id": query_rec.id,
         "answer": result["answer"],
@@ -96,7 +115,9 @@ async def ask_query(
         "citations": result.get("citations", []),
         "processing_time_ms": total_ms,
         "is_blocked": result.get("is_blocked", False),
-        "blocking_reason": result.get("blocking_reason")
+        "blocking_reason": result.get("blocking_reason"),
+        "contract_analysis": result.get("contract_analysis"),
+        "compliance_analysis": result.get("compliance_analysis")
     }
 
 

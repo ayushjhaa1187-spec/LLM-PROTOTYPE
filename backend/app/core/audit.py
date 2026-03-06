@@ -50,7 +50,7 @@ class AuditLogger:
             user_id=user_id,
             action=action,
             resource=resource,
-            metadata=metadata or {},
+            meta_data=metadata or {},
             ip_address=ip_address,
             timestamp=timestamp,
             previous_hash=prev_hash,

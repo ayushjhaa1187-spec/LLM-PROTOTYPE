@@ -27,6 +27,7 @@ pydantic-settings==2.8.1
 slowapi==0.1.9
 thefuzz==0.22.1
 numpy
+fastembed==0.4.4
 pandas
 requests
 sec-edgar-downloader

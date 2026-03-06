@@ -4,7 +4,7 @@ Includes register/login with rate limiting and password strength validation.
 """
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -16,26 +16,31 @@ from app.core.audit import AuditLogger
 from app.utils.rate_limiter import limiter
 from pydantic import BaseModel, EmailStr
 
-router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    full_name: str
+    name: str
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
+    token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: Dict[str, Any]
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.AUTH_RATE_LIMIT)
 async def register(request: Request, user_in: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user with password strength and breach checks."""
+    """Register a new user and return a session token immediately."""
     # Check if exists
     if db.query(security.User).filter(security.User.email == user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -53,7 +58,7 @@ async def register(request: Request, user_in: UserCreate, db: Session = Depends(
     user = security.User(
         email=user_in.email,
         hashed_password=hashed_pwd,
-        full_name=user_in.full_name,
+        full_name=user_in.name,
         role="analyst"
     )
     
@@ -64,37 +69,47 @@ async def register(request: Request, user_in: UserCreate, db: Session = Depends(
     # Audit log
     AuditLogger.log(db, user.id, "REGISTER", "user", {"email": user.email}, request.client.host)
     
-    return {"message": "User registered successfully"}
+    # Generate tokens immediately (Auto-login)
+    access_token = security.create_access_token(data={"sub": user.email})
+    refresh_token = security.create_refresh_token(data={"sub": user.email})
+    
+    return {
+        "token": access_token, 
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": {"email": user.email, "name": user.full_name, "role": user.role}
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.AUTH_RATE_LIMIT)
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    login_data: LoginRequest,
     db: Session = Depends(get_db)
 ):
-    """Secure login with audit logging."""
-    user = db.query(security.User).filter(security.User.email == form_data.username).first()
+    """Secure login with JSON body and audit logging."""
+    user = db.query(security.User).filter(security.User.email == login_data.email).first()
     
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    if not user or not security.verify_password(login_data.password, user.hashed_password):
         # Audit failed attempt (ID is None)
-        AuditLogger.log(db, None, "LOGIN_FAILED", "auth", {"email": form_data.username}, request.client.host)
+        AuditLogger.log(db, None, "LOGIN_FAILED", "auth", {"email": login_data.email}, request.client.host)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
         
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
         
+    # Generate tokens
     access_token = security.create_access_token(data={"sub": user.email})
     refresh_token = security.create_refresh_token(data={"sub": user.email})
     
     AuditLogger.log(db, user.id, "LOGIN_SUCCESS", "auth", {}, request.client.host)
     
     return {
-        "access_token": access_token, 
+        "token": access_token, 
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user": {"email": user.email, "full_name": user.full_name, "role": user.role}
+        "user": {"email": user.email, "name": user.full_name, "role": user.role}
     }
 
 
@@ -103,7 +118,7 @@ async def get_me(current_user: security.User = Depends(security.get_current_user
     """Get current user's profile."""
     return {
         "email": current_user.email,
-        "full_name": current_user.full_name,
+        "name": current_user.full_name,
         "role": current_user.role,
         "id": current_user.id
     }

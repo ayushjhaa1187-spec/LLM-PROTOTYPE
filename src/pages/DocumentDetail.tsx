@@ -16,21 +16,30 @@ export default function DocumentDetail() {
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     const fetchDocAndChunks = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [docRes, chunksRes] = await Promise.all([
           apiFetch(`/api/v1/documents/${id}`),
           apiFetch(`/api/v1/documents/${id}/chunks`)
         ]);
 
-        if (docRes.ok) setDoc(await docRes.json());
-        if (chunksRes.ok) setChunks(await chunksRes.json());
+        if (docRes.ok) {
+          setDoc(await docRes.json());
+        } else {
+          setError("Failed to load document info");
+        }
+        if (chunksRes.ok) {
+          setChunks(await chunksRes.json());
+        }
       } catch (err) {
         console.error("Failed to load document info", err);
+        setError("Network error while connecting to server");
       } finally {
         setLoading(false);
       }
@@ -52,11 +61,23 @@ export default function DocumentDetail() {
   }
 
   if (!doc) {
-    return <div className="p-8 text-center text-slate-500">Document not found</div>;
+    return (
+      <div className="p-8 text-center text-slate-500">
+        {error ? error : "Document not found"}
+      </div>
+    );
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="max-w-7xl mx-auto h-full flex flex-col space-y-4">
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Error:</span> {error}
+          </div>
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700">×</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">

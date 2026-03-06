@@ -16,7 +16,7 @@ class AuditLog(Base):
     user_id = Column(Integer, nullable=True)  # nullable for unauthenticated actions
     action = Column(String, nullable=False)  # LOGIN, UPLOAD, QUERY, etc.
     resource = Column(String, nullable=True)  # what was acted upon
-    metadata = Column(JSON, default=dict)
+    meta_data = Column(JSON, default=dict)
     ip_address = Column(String, nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 

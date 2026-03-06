@@ -108,12 +108,23 @@ from app.routes.documents import router as documents_router
 from app.routes.queries import router as queries_router
 from app.routes.admin import router as admin_router
 from app.routes.compliance import router as compliance_router
+from app.routes.citations import router as citations_router
+from app.routes.audit import router as audit_router
+from app.routes.webhooks import router as webhooks_router
+from strawberry.fastapi import GraphQLRouter
+from app.graphql_schema import schema
+
+graphql_app = GraphQLRouter(schema)
 
 app.include_router(auth_router)
 app.include_router(documents_router)
 app.include_router(queries_router)
 app.include_router(admin_router)
 app.include_router(compliance_router)
+app.include_router(citations_router)
+app.include_router(audit_router)
+app.include_router(webhooks_router)
+app.include_router(graphql_app, prefix="/graphql")
 
 
 # ── Health check ────────────────────────────────────────────────────

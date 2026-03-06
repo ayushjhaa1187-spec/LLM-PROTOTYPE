@@ -20,7 +20,7 @@ export default function VectorManager() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
           <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600">
             <Database className="w-6 h-6" />
           </div>
@@ -29,7 +29,7 @@ export default function VectorManager() {
             <p className="text-2xl font-bold text-slate-900">12,855</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
           <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-600">
             <Database className="w-6 h-6" />
           </div>
@@ -38,7 +38,7 @@ export default function VectorManager() {
             <p className="text-2xl font-bold text-slate-900">4.4 GB</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
           <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-amber-100 text-amber-600">
             <RefreshCw className="w-6 h-6" />
           </div>

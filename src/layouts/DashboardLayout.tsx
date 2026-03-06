@@ -47,8 +47,9 @@ export default function DashboardLayout() {
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+  const userName = user?.name || user?.full_name || "User";
+  const initials = userName !== "User"
+    ? userName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
     : "??";
 
   return (
@@ -93,7 +94,7 @@ export default function DashboardLayout() {
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.full_name || "User"}</p>
+              <p className="text-sm font-medium text-white truncate">{userName}</p>
               <p className="text-xs text-slate-500 capitalize">{user?.role || "—"}</p>
             </div>
             <button onClick={handleLogout} className="text-slate-500 hover:text-white transition-colors" title="Sign Out">

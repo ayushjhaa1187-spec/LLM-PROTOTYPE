@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/api";
 export default function QueryHistory() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -18,9 +19,13 @@ export default function QueryHistory() {
       if (res.ok) {
         const data = await res.json();
         setHistory(data);
+        setError(null);
+      } else {
+        setError("Failed to fetch query history");
       }
     } catch (e) {
       console.error("Failed to fetch history", e);
+      setError("Network error occurred");
     } finally {
       setLoading(false);
     }
@@ -39,6 +44,15 @@ export default function QueryHistory() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Error:</span> {error}
+          </div>
+          <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700">×</button>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">

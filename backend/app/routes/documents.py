@@ -17,6 +17,7 @@ from app.core import security
 from app.core.audit import AuditLogger
 from app.models.document import Document
 from pydantic import BaseModel
+from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
@@ -94,6 +95,17 @@ async def upload_document(
     
     # Trigger background processing (Placeholder for now)
     # process_document_task.delay(doc.id)
+    
+    # Trigger webhook
+    try:
+        await dispatch_event(db, "document.uploaded", {
+            "id": doc.id,
+            "filename": doc.filename,
+            "status": doc.status
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to dispatch event: {e}")
     
     return {
         "id": doc.id,

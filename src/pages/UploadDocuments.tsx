@@ -87,7 +87,7 @@ export default function UploadDocuments() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Upload Documents</h1>
         <p className="text-sm text-slate-500">Ingest PDFs, DOCX, or TXT files for processing.</p>
@@ -98,7 +98,7 @@ export default function UploadDocuments() {
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className="border-2 border-dashed border-slate-300 rounded-xl p-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer relative"
+            className="border-2 border-dashed border-slate-300 rounded-xl p-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition-all hover:scale-[1.02] duration-200 cursor-pointer relative"
           >
             <input
               type="file"

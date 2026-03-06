@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_TEMPERATURE: float = 0.0
+    LLM_PROVIDER: str = "openai"
     
     # EMBEDDING
     EMBEDDING_MODEL: str = "text-embedding-3-small"
@@ -75,7 +76,7 @@ class Settings(BaseSettings):
     DFARS_XML_URL: str = "https://www.acquisition.gov/dfars/dfars-xml"
 
     class Config:
-        env_file = ".env"
+        env_file = os.path.join(os.path.dirname(__file__), "..", ".env")
         case_sensitive = True
         extra = "ignore"
 
@@ -101,4 +102,4 @@ Path(settings.KNOWLEDGE_BASE_DIR).mkdir(parents=True, exist_ok=True)
 
 # Run validation on import
 for msg in validate_settings():
-    print(f"[{'🚨' if 'CRITICAL' in msg else '⚠️'}] {msg}")
+    print(f"[{'CRITICAL' if 'CRITICAL' in msg else 'WARNING'}] {msg}")

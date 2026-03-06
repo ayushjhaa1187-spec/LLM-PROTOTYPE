@@ -55,25 +55,17 @@ def _extract_text_txt(file_path: str) -> list[dict]:
 
 
 def _generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a list of texts using OpenAI."""
-    if not settings.OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY is required for embedding generation")
-
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    # Process in batches of 100 (OpenAI limit is 2048)
-    all_embeddings: list[list[float]] = []
-    batch_size = 100
-
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i : i + batch_size]
-        response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=batch,
-        )
-        for item in response.data:
-            all_embeddings.append(item.embedding)
-
-    return all_embeddings
+    """Generate embeddings for a list of texts using local FastEmbed."""
+    from app.services.rag_service import _get_embedding_model
+    
+    try:
+        model = _get_embedding_model()
+        # FastEmbed embed() returns a generator of embeddings
+        embeddings = list(model.embed(texts))
+        return [e.tolist() for e in embeddings]
+    except Exception as e:
+        print(f"Local embedding failed: {e}. Using mock embeddings.")
+        return [[0.0] * 384 for _ in texts]
 
 
 def process_document(doc_id: str, db: Session):

@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
+import enum
+class UserRole(str, enum.Enum):
+    USER = 'user'
+    ANALYST = 'analyst'
+    ADMIN = 'admin'
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)

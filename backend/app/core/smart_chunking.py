@@ -5,8 +5,8 @@ Preserves FAR/DFARS section boundaries during document processing.
 
 import re
 from typing import List, Dict, Optional
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.docstore.document import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from app.config import settings
 
 
@@ -18,8 +18,8 @@ class RegulationTextSplitter:
         chunk_size: int = None,
         chunk_overlap: int = None
     ):
-        self.chunk_size = chunk_size or settings.CHUNK_SIZE
-        self.chunk_overlap = chunk_overlap or settings.CHUNK_OVERLAP
+        self.chunk_size = chunk_size or getattr(settings, "CHUNK_SIZE", 1000)
+        self.chunk_overlap = chunk_overlap or getattr(settings, "CHUNK_OVERLAP", 200)
         
         # Regulation-specific separators
         self.separators = [
@@ -49,7 +49,7 @@ class RegulationTextSplitter:
         if not matches:
             # Fallback to standard split if no section patterns found
             chunks = self.splitter.split_text(text)
-            return [Document(page_content=c, metadata=metadata) for c in chunks]
+            return [Document(page_content=c, meta_data=metadata) for c in chunks]
             
         docs = []
         for i, match in enumerate(matches):

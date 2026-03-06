@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Send, FileText, Bookmark, Save, ShieldCheck, AlertTriangle, Loader2, Activity, Globe } from "lucide-react";
+import { Send, FileText, ShieldCheck, Loader2, Activity, Globe } from "lucide-react";
 import { motion } from "motion/react";
 import { apiFetch } from "../lib/api";
 
@@ -17,6 +17,10 @@ type Message = {
   citations: Citation[];
   confidence?: number;
   queryId?: string;
+  contract_analysis?: any;
+  compliance_analysis?: any;
+  is_blocked?: boolean;
+  blocking_reason?: string;
 };
 
 export default function QueryChat() {
@@ -145,10 +149,12 @@ export default function QueryChat() {
 
       const assistantMsg: Message = {
         role: "assistant",
-        content: data.answer,
+        content: data.is_blocked ? "⚠️ This response was blocked due to an accuracy or policy violation." : data.answer,
         citations: data.citations || [],
         confidence: data.confidence,
         queryId: data.id,
+        is_blocked: data.is_blocked,
+        blocking_reason: data.blocking_reason
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
@@ -163,52 +169,63 @@ export default function QueryChat() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 border border-slate-200 rounded-xl shadow-sm overflow-hidden font-sans">
-      <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
-        <div>
-          <h2 className="font-bold text-slate-800 tracking-tight">Query Chat</h2>
-          <p className="text-xs text-slate-500">Ask natural questions; receive citation-backed answers from your uploaded documents.</p>
+    <div className="h-full flex flex-col bg-[#F8FAFC] border border-slate-200 rounded-2xl shadow-2xl overflow-hidden font-sans backdrop-blur-sm">
+      <div className="p-5 border-b border-slate-200/60 bg-white/80 backdrop-blur-md flex justify-between items-center z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <ShieldCheck className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-slate-900 tracking-tight text-lg">FAR Compliance Copilot</h2>
+            <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Enterprise RAG Engine • Secure Audit</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-md uppercase tracking-wider">RAG Pipeline</span>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase">System Status</span>
+            <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Local-Vector Ready</span>
+          </div>
         </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scroll-smooth">
         {messages.map((msg, i) => (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
             key={i}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
           >
-            <div className={`max-w-[80%] rounded-2xl p-5 shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
-              <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</p>
+            <div className={`max-w-[85%] rounded-[2.5rem] p-6 transition-all duration-300 ${msg.role === 'user'
+                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-br-none shadow-xl shadow-blue-500/20'
+                : 'bg-white/70 backdrop-blur-xl border border-white/40 text-slate-800 rounded-bl-none shadow-lg'
+              }`}>
+              <p className="whitespace-pre-wrap leading-relaxed text-[15.5px] font-medium tracking-tight">{msg.content}</p>
 
               {msg.contract_analysis && (
-                <div className="mt-4 p-4 rounded-xl bg-indigo-50 border border-indigo-100 space-y-3 shadow-inner">
-                  <div className="flex items-center gap-2 text-indigo-700 font-bold text-[10px] uppercase tracking-widest">
-                    <Activity className="w-3.5 h-3.5" /> Special Insight: Contract Analysis
+                <div className="mt-5 p-5 rounded-[1.8rem] bg-indigo-50/50 backdrop-blur-md border border-indigo-100/50 space-y-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-200/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                  <div className="flex items-center gap-2 text-indigo-700 font-bold text-[11px] uppercase tracking-[0.2em] relative z-10">
+                    <Activity className="w-4 h-4" /> AI Auditor: Contract Analysis
                   </div>
-                  <p className="text-sm text-slate-700 font-semibold">{msg.contract_analysis.summary}</p>
+                  <p className="text-[15px] text-slate-800 font-bold relative z-10 leading-snug">{msg.contract_analysis.summary}</p>
 
                   {msg.contract_analysis.risks?.length > 0 && (
-                    <div className="space-y-1.5 pt-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Critical Risks</p>
+                    <div className="space-y-3 pt-2 relative z-10">
                       {msg.contract_analysis.risks.map((r: any, idx: number) => (
-                        <div key={idx} className="flex flex-col gap-1 text-xs bg-white/60 p-3 rounded border border-indigo-50 shadow-sm">
-                          <div className="flex justify-between items-start mb-1">
-                            <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] uppercase ${r.level === 'high' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
-                              {r.level} Risk
+                        <div key={idx} className="flex flex-col gap-2 text-xs bg-white/80 p-4 rounded-2xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-center">
+                            <span className={`font-black px-2 py-1 rounded-lg text-[9px] uppercase tracking-tighter ${r.level === 'high' ? 'bg-rose-500 text-white' : 'bg-amber-400 text-slate-900'}`}>
+                              {r.level} Risk Detection
                             </span>
                           </div>
-                          <p className="font-medium text-slate-800 italic">"{r.clause}"</p>
-                          <p className="text-slate-500 mt-1">{r.reason}</p>
+                          <p className="font-bold text-slate-900 italic text-sm">"{r.clause}"</p>
+                          <p className="text-slate-600 leading-normal">{r.reason}</p>
                           {r.remediation && (
-                            <div className="mt-2 p-2 bg-indigo-100/50 rounded border-l-2 border-indigo-500">
-                              <p className="text-[10px] font-bold text-indigo-700 uppercase mb-0.5">Proposed Remediation</p>
-                              <p className="text-indigo-900 leading-tight">{r.remediation}</p>
+                            <div className="mt-2 p-3 bg-blue-50 rounded-xl border-l-4 border-blue-500">
+                              <p className="text-[10px] font-black text-blue-700 uppercase mb-1 tracking-widest">Remediation Strategy</p>
+                              <p className="text-blue-900 font-medium leading-tight">{r.remediation}</p>
                             </div>
                           )}
                         </div>
@@ -216,68 +233,85 @@ export default function QueryChat() {
                     </div>
                   )}
 
-                  <div className="flex gap-6 pt-3 border-t border-indigo-100/50">
+                  <div className="flex gap-8 pt-4 border-t border-indigo-100 relative z-10">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Obligations</span>
-                      <span className="text-sm font-bold text-indigo-600">{msg.contract_analysis.obligations?.length || 0}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Obligations</span>
+                      <span className="text-lg font-black text-slate-900">{msg.contract_analysis.obligations?.length || 0}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Compliance Issues</span>
-                      <span className="text-sm font-bold text-rose-500">{msg.contract_analysis.compliance_issues?.length || 0}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Compliance Gaps</span>
+                      <span className="text-lg font-black text-rose-600">{msg.contract_analysis.compliance_issues?.length || 0}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {msg.compliance_analysis && (
-                <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100 space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-700 font-bold text-[10px] uppercase tracking-widest">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Compliance Radar
+                <div className="mt-5 p-5 rounded-[1.8rem] bg-emerald-50/50 backdrop-blur-md border border-emerald-100/50 space-y-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-[11px] uppercase tracking-[0.2em]">
+                      <ShieldCheck className="w-4 h-4" /> Compliance Radar
                     </div>
-                    <span className="text-xs font-bold text-emerald-600">Score: {msg.compliance_analysis.compliance_score}%</span>
+                    <div className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[13px] font-black shadow-lg shadow-emerald-500/30">
+                      {msg.compliance_analysis.compliance_score}%
+                    </div>
                   </div>
 
                   {msg.compliance_analysis.scoring_rationale && (
-                    <p className="text-[10px] text-slate-500 italic bg-white/40 p-1.5 rounded border border-emerald-50">
-                      Rationale: {msg.compliance_analysis.scoring_rationale}
+                    <p className="text-[11px] text-slate-600 font-medium bg-white/60 p-3 rounded-xl border border-emerald-50 relative z-10 leading-snug">
+                      {msg.compliance_analysis.scoring_rationale}
                     </p>
                   )}
 
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2 relative z-10">
                     {msg.compliance_analysis.regions?.map((reg: string, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold border border-emerald-200 uppercase">
-                        {reg}
+                      <span key={idx} className="px-3 py-1 bg-white border border-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-tighter">
+                        {reg} Mapping
                       </span>
                     ))}
                   </div>
 
                   {msg.compliance_analysis.regulations?.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Applicable Regulations</p>
+                    <div className="space-y-2 relative z-10">
                       {msg.compliance_analysis.regulations.map((r: any, idx: number) => (
-                        <div key={idx} className="flex flex-col text-xs bg-white/60 p-2 rounded border border-emerald-50">
-                          <span className="font-bold text-slate-800">{r.name} ({r.region})</span>
-                          <span className="text-slate-500 text-[11px]">{r.impact}</span>
+                        <div key={idx} className="flex flex-col text-xs bg-white/80 p-3 rounded-xl border border-emerald-50 shadow-sm transition-transform hover:translate-x-1">
+                          <span className="font-extrabold text-slate-900">{r.name}</span>
+                          <span className="text-slate-500 text-[11px] mt-0.5">{r.impact}</span>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {msg.compliance_analysis.recommended_actions?.length > 0 && (
-                    <div className="pt-2 border-t border-emerald-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Recommended Actions</p>
-                      <ul className="list-disc list-inside space-y-0.5">
+                    <div className="pt-3 border-t border-emerald-100 relative z-10">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Conformity Checklist</p>
+                      <div className="grid grid-cols-1 gap-2">
                         {msg.compliance_analysis.recommended_actions.map((act: string, idx: number) => (
-                          <li key={idx} className="text-[11px] text-slate-600 leading-tight">{act}</li>
+                          <div key={idx} className="flex items-start gap-2 bg-white/30 p-2 rounded-lg">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1 shrink-0" />
+                            <span className="text-[11.5px] text-slate-700 font-medium leading-tight">{act}</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {msg.role === 'assistant' && msg.confidence !== undefined && (
+              {msg.is_blocked && (
+                <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 shadow-inner">
+                  <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider mb-2">
+                    <ShieldCheck className="w-4 h-4" /> AI Hallucination Guard Triggered
+                  </div>
+                  <p className="text-sm text-red-900 leading-relaxed font-medium">
+                    {msg.blocking_reason || "This response was flagged as medically, legally, or factually inaccurate compared to our vector dataset."}
+                  </p>
+                  <p className="mt-2 text-[10px] text-red-600 uppercase font-bold tracking-widest">Event triggered: compliance.failed webhook sent to admin.</p>
+                </div>
+              )}
+
+              {msg.role === 'assistant' && msg.confidence !== undefined && !msg.is_blocked && (
                 <div className="mt-3 flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${msg.confidence >= 0.7 ? 'bg-emerald-500' : msg.confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'}`} />
                   <span className="text-xs font-medium text-slate-500">

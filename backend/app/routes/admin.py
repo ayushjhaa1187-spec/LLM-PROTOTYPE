@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.config import settings
-from app.models.user import User, UserRole
+from app.models.user import User
+from app.utils.security import UserRole
 from app.models.document import Document
 from app.models.query import QueryRecord
 from app.models.audit import AuditLog
